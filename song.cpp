@@ -1,4 +1,7 @@
 #include "song.h"
+#include <filesystem>
+#include <iostream>
+
 using namespace std;
 
 Song::Song(){}
@@ -9,27 +12,27 @@ Song::Song(std::string title, std::string artist, std::string album, std::string
     m_id = nextId++;
 }
 
-void Song::setTitle(std::string title) const {
+void Song::setTitle(std::string title)  {
     m_title = title;
 }
 
-void Song::setArtist(std::string artist) const {
+void Song::setArtist(std::string artist)  {
     m_artist = artist;
 }
 
-void Song::setAlbum(std::string album) const {
+void Song::setAlbum(std::string album)  {
     m_album = album;
 }
 
-void Song::setPath(std::string path) const {
+void Song::setFilePath(std::string path)  {
     m_filePath = path;
 }
 
-void Song::setDuration(int duration) const {
+void Song::setDuration(int duration)  {
     m_duration = duration;
 }
 
-void Song::setId(int id) const {
+void Song::setId(int id)  {
     m_id = id;
 }
 
@@ -58,11 +61,15 @@ int Song::id() const {
 }
 
 std::string Song::durationFormatted() const {
-    int minutes = duration() / 60;
-    int seconds = duration() % 60;
+    int totalSeconds= duration()/1000;
+    int minutes = totalSeconds / 60;
+    int seconds = totalSeconds % 60;
     return std::to_string(minutes) + ":" + (seconds < 10 ? "0" : "") + std::to_string(seconds);
 }
 
 bool Song::isValid() const {
-    return !title().empty() && !artist().empty() && !album().empty() && !path().empty();
+    return !path().empty() && std::filesystem::exists(m_filePath);
+}
+int main(){
+    return 0;
 }

@@ -16,7 +16,7 @@ public:
     void setTitle(std::string title) ;
     void setArtist(std::string artist) ;
     void setAlbum(std::string album) ;
-    void setPath(std::string path) ;
+    void setFilePath(std::string path) ;
     void setDuration(int duration) ;
     void setId(int id);
 
