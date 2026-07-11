@@ -1,15 +1,13 @@
 #include "song.h"
 #include <filesystem>
-#include <iostream>
 
 using namespace std;
-
-Song::Song(){}
+int Song::s_nextId=1;
+Song::Song():m_id(s_nextId++){}
 
 Song::Song(std::string title, std::string artist, std::string album, std::string path, int duration)
     : m_title(title), m_artist(artist), m_album(album), m_filePath(path), m_duration(duration) {
-    static int nextId = 1;
-    m_id = nextId++;
+    m_id = s_nextId++;
 }
 
 void Song::setTitle(std::string title)  {
