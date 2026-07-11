@@ -9,6 +9,7 @@ private:
     std::string m_filePath;
     int m_id;
     int m_duration;
+    static int s_nextId;
 public:
     Song();
     Song(std::string title,std::string artist, std::string album,
