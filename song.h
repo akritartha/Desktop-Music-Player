@@ -23,7 +23,7 @@ public:
     std::string title() const;
     std::string artist() const;
     std::string album() const;
-    std::string path() const;
+    std::string filepath() const;
     int duration() const;
     int id() const;
 

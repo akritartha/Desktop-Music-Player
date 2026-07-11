@@ -48,7 +48,7 @@ std::string Song::album() const {
     return m_album;
 }
 
-std::string Song::path() const {
+std::string Song::filepath() const {
     return m_filePath;
 }
 
@@ -68,8 +68,5 @@ std::string Song::durationFormatted() const {
 }
 
 bool Song::isValid() const {
-    return !path().empty() && std::filesystem::exists(m_filePath);
-}
-int main(){
-    return 0;
+    return !filepath().empty() && std::filesystem::exists(m_filePath);
 }
