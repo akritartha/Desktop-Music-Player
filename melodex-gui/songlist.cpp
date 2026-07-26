@@ -1,5 +1,7 @@
 #include "songlist.h"
 #include "raylib.h"
+#include "textutils.h"
+#include <cctype>
 
 #define FONT_SCALE 1.0f
 
@@ -14,7 +16,8 @@ void UnloadSongListAssets() {
     UnloadTexture(magnifierTexture);
 }
 
-void DrawSongList(Font poppinsFont, Font poppinsFontBold) {
+int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Vector2 virtualMouse, const std::vector<SongEntry>& songs, int currentSongIndex, const std::string& searchText) {
+    int clickedIndex = -1;
     Color bgPanelColor = { 255, 255, 255, 76 };
 
     // 1. Left box background panel
@@ -28,41 +31,101 @@ void DrawSongList(Font poppinsFont, Font poppinsFontBold) {
     // 3. Search placeholder text
     Vector2 searchPos = { 150.0f, 165.0f };
     Color placeholderColor = { 255, 255, 255, 220 };
-    DrawTextEx(poppinsFont, "Search for Songs", searchPos, 25.0f * FONT_SCALE, 1.0f, placeholderColor);
+    if (!searchText.empty()) {
+        DrawTextEx(poppinsFont, searchText.c_str(), searchPos, 25.0f * FONT_SCALE, 1.0f, WHITE);
+    } else {
+        DrawTextEx(poppinsFont, "Search for Songs", searchPos, 25.0f * FONT_SCALE, 1.0f, placeholderColor);
+    }
 
     Rectangle magSource = { 0, 0, (float)magnifierTexture.width, (float)magnifierTexture.height };
     Rectangle magDest = { 98.0f, 163.0f, 30.0f, 30.0f };
     DrawTexturePro(magnifierTexture, magSource, magDest, (Vector2){0, 0}, 0.0f, WHITE);
 
-    // 4. First song row background
-    Rectangle row1Rec = { 82.0f, 245.0f, 569.0f, 101.0f };
-    DrawRectangleRounded(row1Rec, 0.15f, 8, bgPanelColor);
 
-    // 5. First song row album thumbnail
-    Rectangle thumb1Rec = { 100.0f, 261.0f, 70.0f, 70.0f };
-    DrawRectangleRounded(thumb1Rec, 0.14f, 8, bgPanelColor);
+    float listAreaTop = 245.0f;
+    float listAreaBottom = leftPanelRec.y + leftPanelRec.height;
 
-    // 6. First song title
-    Vector2 title1Pos = { 199.0f, 270.0f };
-    DrawTextEx(poppinsFontBold, "Hey There Delilah", title1Pos, 25.0f * FONT_SCALE, 1.0f, WHITE);
+    bool mouseOverPanel = CheckCollisionPointRec(virtualMouse, leftPanelRec);
+    if (mouseOverPanel) {
+        float wheelMove = GetMouseWheelMove();
+        *scrollOffset -= wheelMove * 30.0f;
+    }
 
-    // 7. First song artist
-    Vector2 artist1Pos = { 199.0f, 300.0f };
-    DrawTextEx(poppinsFont, "Plain White T's", artist1Pos, 20.0f * FONT_SCALE, 1.0f, WHITE);
+    std::vector<int> filteredIndices;
+    for (size_t i = 0; i < songs.size(); ++i) {
+        if (searchText.empty()) {
+            filteredIndices.push_back((int)i);
+        } else {
+            std::string titleLower = songs[i].title;
+            std::string artistLower = songs[i].artist;
+            std::string searchLower = searchText;
+            for (auto& c : titleLower) c = tolower(c);
+            for (auto& c : artistLower) c = tolower(c);
+            for (auto& c : searchLower) c = tolower(c);
+            
+            if (titleLower.find(searchLower) != std::string::npos || 
+                artistLower.find(searchLower) != std::string::npos) {
+                filteredIndices.push_back((int)i);
+            }
+        }
+    }
 
-    // 8. Second song row background
-    Rectangle row2Rec = { 82.0f, 366.0f, 569.0f, 101.0f };
-    DrawRectangleRounded(row2Rec, 0.15f, 8, bgPanelColor);
+    float visibleHeight = listAreaBottom - listAreaTop;
+    float maxScroll = (filteredIndices.size() * 121.0f) - visibleHeight;
+    if (maxScroll < 0.0f) maxScroll = 0.0f;
+    if (*scrollOffset < 0.0f) *scrollOffset = 0.0f;
+    if (*scrollOffset > maxScroll) *scrollOffset = maxScroll;
 
-    // 9. Second song row album thumbnail
-    Rectangle thumb2Rec = { 100.0f, 382.0f, 70.0f, 70.0f };
-    DrawRectangleRounded(thumb2Rec, 0.14f, 8, bgPanelColor);
+    BeginScissorMode((int)leftPanelRec.x, (int)listAreaTop, 
+                      (int)leftPanelRec.width, (int)(listAreaBottom - listAreaTop));
 
-    // 10. Second song title
-    Vector2 title2Pos = { 199.0f, 390.0f };
-    DrawTextEx(poppinsFontBold, "Blue", title2Pos, 25.0f * FONT_SCALE, 1.0f, WHITE);
+    for (size_t j = 0; j < filteredIndices.size(); ++j) {
+        int i = filteredIndices[j];
+        const auto& song = songs[i];
+        float rowY = 245.0f - *scrollOffset + (j * 121.0f);
 
-    // 11. Second song artist
-    Vector2 artist2Pos = { 199.0f, 420.0f };
-    DrawTextEx(poppinsFont, "Yung Kai", artist2Pos, 20.0f * FONT_SCALE, 1.0f, WHITE);
+        if (rowY + 101.0f > listAreaTop && rowY < listAreaBottom) {
+            bool isCurrentSong = ((int)i == currentSongIndex);
+            Color rowColor = isCurrentSong ? Color{255, 255, 255, 130} : Color{255, 255, 255, 76};
+
+            // Row background
+            Rectangle rowRec = { 82.0f, rowY, 569.0f, 101.0f };
+            
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, rowRec)) {
+                clickedIndex = (int)i;
+            }
+
+            DrawRectangleRounded(rowRec, 0.15f, 8, rowColor);
+
+            // Thumbnail
+            Rectangle thumbRec = { 100.0f, rowY + 16.0f, 70.0f, 70.0f };
+            Color leftColor = { 0, 31, 62, 255 };
+            Color rightColor = { 0, 115, 230, 255 };
+            DrawRectangleGradientEx(thumbRec, leftColor, leftColor, rightColor, rightColor);
+
+            // Thumbnail fallback
+            if (!song.title.empty()) {
+                std::string fallbackStr(1, (char)toupper(song.title[0]));
+                Vector2 textSize = MeasureTextEx(poppinsFontBold, fallbackStr.c_str(), 30.0f * FONT_SCALE, 1.0f);
+                Vector2 textPos = {
+                    thumbRec.x + (thumbRec.width - textSize.x) / 2.0f,
+                    thumbRec.y + (thumbRec.height - textSize.y) / 2.0f
+                };
+                DrawTextEx(poppinsFontBold, fallbackStr.c_str(), textPos, 30.0f * FONT_SCALE, 1.0f, WHITE);
+            }
+
+            // Title
+            Vector2 titlePos = { 199.0f, rowY + 25.0f };
+            std::string titleStr = TruncateText(poppinsFontBold, song.title, 25.0f * FONT_SCALE, 1.0f, 400.0f);
+            DrawTextEx(poppinsFontBold, titleStr.c_str(), titlePos, 25.0f * FONT_SCALE, 1.0f, WHITE);
+
+            // Artist
+            Vector2 artistPos = { 199.0f, rowY + 55.0f };
+            std::string artistStr = TruncateText(poppinsFont, song.artist, 20.0f * FONT_SCALE, 1.0f, 400.0f);
+            DrawTextEx(poppinsFont, artistStr.c_str(), artistPos, 20.0f * FONT_SCALE, 1.0f, WHITE);
+        }
+    }
+
+    EndScissorMode();
+    return clickedIndex;
 }

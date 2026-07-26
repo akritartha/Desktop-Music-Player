@@ -1,5 +1,6 @@
 #include "nowcard.h"
 #include "raylib.h"
+#include "textutils.h"
 
 #define FONT_SCALE 1.0f
 
@@ -25,11 +26,13 @@ void DrawNowCard(Font jotiOneFont, Font jotiOneFontBold, Font poppinsFont, const
 
     // 5. Song title
     Vector2 titlePos = { 777.0f, 574.0f };
-    DrawTextEx(jotiOneFontBold, songTitle, titlePos, 35.0f * FONT_SCALE, 1.0f, WHITE);
+    std::string truncTitle = TruncateText(jotiOneFontBold, songTitle, 35.0f * FONT_SCALE, 1.0f, 350.0f);
+    DrawTextEx(jotiOneFontBold, truncTitle.c_str(), titlePos, 35.0f * FONT_SCALE, 1.0f, WHITE);
 
     // 6. Artist name
     Vector2 artistPos = { 777.0f, 613.0f };
-    DrawTextEx(poppinsFont, artistName, artistPos, 23.0f * FONT_SCALE, 1.0f, WHITE);
+    std::string truncArtist = TruncateText(poppinsFont, artistName, 23.0f * FONT_SCALE, 1.0f, 350.0f);
+    DrawTextEx(poppinsFont, truncArtist.c_str(), artistPos, 23.0f * FONT_SCALE, 1.0f, WHITE);
 
     // 7. "+ Add Lyrics" button
     Rectangle btnRec = { 853.0f, 733.0f, 203.0f, 51.0f };

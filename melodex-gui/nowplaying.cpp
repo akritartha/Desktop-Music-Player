@@ -1,5 +1,7 @@
 #include "nowplaying.h"
 #include "raylib.h"
+#include "textutils.h"
+#include <math.h>
 
 #define FONT_SCALE 1.0f
 
@@ -22,11 +24,13 @@ void DrawNowPlayingBar(Font poppinsFont, Font poppinsBold, const char* songTitle
     
     // 4. Song title
     Vector2 titlePos = { 177.0f, 962.0f };
-    DrawTextEx(poppinsBold, songTitle, titlePos, 30.0f * FONT_SCALE, 1.0f, WHITE);
+    std::string truncTitle = TruncateText(poppinsBold, songTitle, 30.0f * FONT_SCALE, 1.0f, 250.0f);
+    DrawTextEx(poppinsBold, truncTitle.c_str(), titlePos, 30.0f * FONT_SCALE, 1.0f, WHITE);
     
     // 5. Artist name
     Vector2 artistPos = { 177.0f, 992.0f };
-    DrawTextEx(poppinsFont, artistName, artistPos, 23.0f * FONT_SCALE, 1.0f, WHITE);
+    std::string truncArtist = TruncateText(poppinsFont, artistName, 23.0f * FONT_SCALE, 1.0f, 250.0f);
+    DrawTextEx(poppinsFont, truncArtist.c_str(), artistPos, 23.0f * FONT_SCALE, 1.0f, WHITE);
 
     // 6. Background progress track
     Rectangle bgProgressRec = { 505.0f, 915.0f, 910.0f, 8.7f };
@@ -46,12 +50,27 @@ void DrawNowPlayingBar(Font poppinsFont, Font poppinsBold, const char* songTitle
     Vector2 totalTimePos = { 1475.0f - totalTextSize.x, 905.0f };
     DrawTextEx(poppinsFont, totalTime, totalTimePos, 30.0f * FONT_SCALE, 1.0f, WHITE);
 
-    // 10. current sound level
-    Rectangle currentSoundRec = { 1642.0f, 990.0f, 175.0f, 7.0f };
-    Color currentSoundColor = { 255, 255, 255, 128 };
-    DrawRectangleRounded(currentSoundRec, 0.8f, 6, currentSoundColor);
+    // 10. sound level background track
+    Rectangle soundTrackRec = { 1642.0f, 990.0f, 175.0f, 7.0f };
+    Color soundTrackColor = { 255, 255, 255, 128 };
+    DrawRectangleRounded(soundTrackRec, 0.8f, 6, soundTrackColor);
 
-    // 11. total sound level
-    Rectangle filledSoundRec = { 1642.0f, 990.0f, 175.0f * soundLevel, 7.0f };
-    DrawRectangleRounded(filledSoundRec, 0.8f, 6, WHITE);
+    // 11. sound level filled portion (current volume)
+    Rectangle soundFillRec = { 1642.0f, 990.0f, 175.0f * soundLevel, 7.0f };
+    DrawRectangleRounded(soundFillRec, 0.8f, 6, WHITE);
+}
+
+float UpdateSoundLevel(Vector2 virtualMouse, float currentSoundLevel) {
+    Rectangle soundBarRec = { 1642.0f, 990.0f, 175.0f, 7.0f };
+    
+    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && 
+        virtualMouse.y >= (soundBarRec.y - 15.0f) && virtualMouse.y <= (soundBarRec.y + 15.0f) &&
+        virtualMouse.x >= (soundBarRec.x - 10.0f) && virtualMouse.x <= (soundBarRec.x + soundBarRec.width + 10.0f)) {
+        
+        float newLevel = (virtualMouse.x - soundBarRec.x) / soundBarRec.width;
+        newLevel = fmaxf(0.0f, fminf(1.0f, newLevel));
+        return newLevel;
+    }
+    
+    return currentSoundLevel;
 }

@@ -75,8 +75,24 @@ void DrawControls(bool isPlaying) {
 }
 
 bool IsPlayButtonClicked(Vector2 virtualMouse) {
-    Rectangle playBtnRec = { 1010.0f, 905.0f, 80.0f, 80.0f }; // Using 905.0f to match the actual draw position from earlier offset
+    Rectangle playBtnRec = { 923.0f, 955.0f, 80.0f, 80.0f };
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, playBtnRec)) {
+        return true;
+    }
+    return false;
+}
+
+bool IsNextButtonClicked(Vector2 virtualMouse) {
+    Rectangle nextBtnRec = { 1075.0f, 960.0f, 60.0f, 60.0f };
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, nextBtnRec)) {
+        return true;
+    }
+    return false;
+}
+
+bool IsPreviousButtonClicked(Vector2 virtualMouse) {
+    Rectangle prevBtnRec = { 793.0f, 965.0f, 60.0f, 60.0f };
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, prevBtnRec)) {
         return true;
     }
     return false;
