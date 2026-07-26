@@ -3,17 +3,18 @@
 #include <fstream>
 #include <filesystem>
 #include <sstream>
-using namespace std;
+#include <algorithm>
+#include <string>
 Library::Library(){}
-Library::Library(string dbPath):m_dbPath(dbPath){
+Library::Library(std::string dbPath):m_dbPath(dbPath){
 }
 bool Library::addSong(const Song& song){
     if(!song.isValid())
         return false;
-    for (const auto&s:m_songs){
+    for (const auto& s : m_songs){
         //auto lets compiler figure out the type
         //for x in list:
-        if (s.filepath()==song.filepath()){
+        if (s.filepath() == song.filepath()){
             return false;
         }
     }
@@ -21,11 +22,11 @@ bool Library::addSong(const Song& song){
     return save();
 }
 bool Library::save(){
-    ofstream file(m_dbPath); //output file stream for writing
+    std::ofstream file(m_dbPath); //output file stream for writing
     if(!file.is_open()){
         return false;
     }
-    for (const auto& s:m_songs){
+    for (const auto& s : m_songs){
         file<<s.id()<<"|"<<s.title()<<"|"
         <<s.artist()<<"|"<<s.album()<<"|"
         <<s.filepath()<<"|"<<s.duration()<<"\n";
@@ -41,43 +42,72 @@ bool Library::removeSong(int id){
     }
     return false;
 }
-const vector<Song>& Library::allSongs() const{
+const std::vector<Song>& Library::allSongs() const{
     return m_songs;
 }
 bool Library::load(){
-    if(!filesystem::exists(m_dbPath)){
+    if(!std::filesystem::exists(m_dbPath)){
         return true; //file doesnt exist meaning its empty so empty library
     }
-    ifstream file(m_dbPath);
+    std::ifstream file(m_dbPath);
     if(!file.is_open()){
         return false;
     }
-    string line;
-    while (getline(file,line)){
-        stringstream ss(line); //treats a string like a file 
+    std::string line;
+    while (std::getline(file,line)){
+        std::stringstream ss(line); //treats a string like a file 
         Song s;
-        string id,title,artist,album,path,duration;
-        getline(ss,id ,'|');
+        std::string id,title,artist,album,path,duration;
+        std::getline(ss,id ,'|');
         try{
-            s.setId(stoi(id));
+            s.setId(std::stoi(id));
         }catch(...){ //catch any exception (. . .)=ellipsis
             continue; 
             //skip this line if id is not a valid integer
         }
-        s.setId(stoi(id));
-        getline(ss,title ,'|');
+        s.setId(std::stoi(id));
+        std::getline(ss,title ,'|');
         s.setTitle(title);
-        getline(ss,artist ,'|');
+        std::getline(ss,artist ,'|');
         s.setArtist(artist);
-        getline(ss,album ,'|');
+        std::getline(ss,album ,'|');
         s.setAlbum(album);
-        getline(ss,path ,'|');
+        std::getline(ss,path ,'|');
         s.setFilePath(path);
-        getline(ss,duration ,'|');
-        s.setDuration(stoi(duration));
+        std::getline(ss,duration ,'|');
+        s.setDuration(std::stoi(duration));
         m_songs.push_back(s);
     }
     return true;
+}
+
+int Library::scanFolders(const std::string& folderPath){
+    namespace f = std::filesystem;
+    if(!f::exists(folderPath)||!f::is_directory(folderPath)){
+        std::cerr<<"Invalid folder path: "<<folderPath<<"\n";
+        return 1;
+    }
+    static const std::vector<std::string> supportedExtensions= {".mp3",".ogg",".flac",".wav"};
+    for(const auto& entry : f::directory_iterator(folderPath)){
+        if(!entry.is_regular_file()){
+            std::cerr<<"Invalid folder path: "<<folderPath<<"\n";
+            return 1;
+        }
+        std::string ext= entry.path().extension().string();
+        std::transform(ext.begin(),ext.end(),ext.begin(),::tolower); //transform(input_start, input_end, destination,operation)
+        //transform is within algorithm module
+        if (std::find(supportedExtensions.begin(),supportedExtensions.end(),ext)!=supportedExtensions.end()){
+            //ext.end() returns end() if find() finds ext it returns the iterator to the matching element
+            std::cout<<"True";
+            std::string filename= entry.path().stem().string();
+            Song s(filename,"Unknown Artist",entry.path().string(),entry.path());
+            addSong(s);
+        }
+        else{
+            std::cout<<"False";
+        }
+    }
+    return 0;
 }
 
 
