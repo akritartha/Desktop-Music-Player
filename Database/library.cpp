@@ -9,7 +9,7 @@ Library::Library(){}
 Library::Library(std::string dbPath):m_dbPath(dbPath){
 }
 bool Library::addSong(const Song& song){
-    if(!song.isValid())
+    if(!song.isValid() and !alreadyExists(song.filepath()))
         return false;
     for (const auto& s : m_songs){
         //auto lets compiler figure out the type
@@ -80,7 +80,14 @@ bool Library::load(){
     }
     return true;
 }
-
+bool Library::alreadyExists(const std::string& filePath){
+    for (const Song &s:m_songs){
+        if(s.filepath()==filePath){
+            return true;
+        }
+    }
+    return false;
+}
 int Library::scanFolders(const std::string& folderPath){
     namespace f = std::filesystem;
     if(!f::exists(folderPath)||!f::is_directory(folderPath)){
@@ -98,13 +105,9 @@ int Library::scanFolders(const std::string& folderPath){
         //transform is within algorithm module
         if (std::find(supportedExtensions.begin(),supportedExtensions.end(),ext)!=supportedExtensions.end()){
             //ext.end() returns end() if find() finds ext it returns the iterator to the matching element
-            std::cout<<"True";
             std::string filename= entry.path().stem().string();
             Song s(filename,"Unknown Artist",entry.path().string(),entry.path());
             addSong(s);
-        }
-        else{
-            std::cout<<"False";
         }
     }
     return 0;
