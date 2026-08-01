@@ -1,10 +1,11 @@
 #include "playlistbox.h"
 #include "raylib.h"
 #include "textutils.h"
+#include <cmath>
 
 #define FONT_SCALE 1.0f
 
-void DrawPlaylistBox(Font poppinsFontBold) {
+int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOffset, const std::vector<PlaylistEntry>& playlists) {
     Color bgPanelColor = { 255, 255, 255, 76 };
 
     // 1. Right box background panel
@@ -17,39 +18,55 @@ void DrawPlaylistBox(Font poppinsFontBold) {
     Vector2 btnTextPos = { 1630.0f, 160.0f };
     DrawTextEx(poppinsFontBold, "+ Add Playlist", btnTextPos, 28.0f * FONT_SCALE, 1.0f, WHITE);
 
-    // 3. Card 1 (English)
-    Rectangle card1Rec = { 1284.0f, 230.0f, 211.0f, 250.0f };
-    DrawRectangleRounded(card1Rec, 0.15f, 8, bgPanelColor);
-    Rectangle thumb1Rec = { 1302.0f, 249.0f, 175.0f, 168.0f };
-    DrawRectangleRounded(thumb1Rec, 0.12f, 8, bgPanelColor);
-    Vector2 label1Pos = { 1315.0f, 428.0f };
-    std::string label1 = TruncateText(poppinsFontBold, "English", 30.0f * FONT_SCALE, 1.0f, 160.0f);
-    DrawTextEx(poppinsFontBold, label1.c_str(), label1Pos, 30.0f * FONT_SCALE, 1.0f, WHITE);
+    float listAreaTop = 230.0f;
+    float listAreaBottom = rightPanelRec.y + rightPanelRec.height;
+    bool mouseOverPanel = CheckCollisionPointRec(virtualMouse, rightPanelRec);
 
-    // 4. Card 2 (Hindi)
-    Rectangle card2Rec = { 1584.0f, 230.0f, 211.0f, 250.0f };
-    DrawRectangleRounded(card2Rec, 0.15f, 8, bgPanelColor);
-    Rectangle thumb2Rec = { 1602.0f, 249.0f, 175.0f, 168.0f };
-    DrawRectangleRounded(thumb2Rec, 0.12f, 8, bgPanelColor);
-    Vector2 label2Pos = { 1616.0f, 428.0f };
-    std::string label2 = TruncateText(poppinsFontBold, "Hindi", 30.0f * FONT_SCALE, 1.0f, 160.0f);
-    DrawTextEx(poppinsFontBold, label2.c_str(), label2Pos, 30.0f * FONT_SCALE, 1.0f, WHITE);
+    if (mouseOverPanel) {
+        float wheelMove = GetMouseWheelMove();
+        *scrollOffset -= wheelMove * 30.0f;
+    }
 
-    // 5. Card 3 (Nepali)
-    Rectangle card3Rec = { 1284.0f, 548.0f, 211.0f, 250.0f };
-    DrawRectangleRounded(card3Rec, 0.15f, 8, bgPanelColor);
-    Rectangle thumb3Rec = { 1302.0f, 567.0f, 175.0f, 168.0f };
-    DrawRectangleRounded(thumb3Rec, 0.12f, 8, bgPanelColor);
-    Vector2 label3Pos = { 1316.0f, 746.0f };
-    std::string label3 = TruncateText(poppinsFontBold, "Nepali", 30.0f * FONT_SCALE, 1.0f, 160.0f);
-    DrawTextEx(poppinsFontBold, label3.c_str(), label3Pos, 30.0f * FONT_SCALE, 1.0f, WHITE);
+    int columns = 2;
+    int rows = (int)((playlists.size() + columns - 1) / columns);
+    float rowHeight = 318.0f;
+    float visibleHeight = listAreaBottom - listAreaTop;
+    float maxScroll = (rows * rowHeight) - visibleHeight;
+    if (maxScroll < 0.0f) maxScroll = 0.0f;
+    if (*scrollOffset < 0.0f) *scrollOffset = 0.0f;
+    if (*scrollOffset > maxScroll) *scrollOffset = maxScroll;
 
-    // 6. Card 4 (Spanish)
-    Rectangle card4Rec = { 1584.0f, 548.0f, 211.0f, 250.0f };
-    DrawRectangleRounded(card4Rec, 0.15f, 8, bgPanelColor);
-    Rectangle thumb4Rec = { 1602.0f, 567.0f, 175.0f, 168.0f };
-    DrawRectangleRounded(thumb4Rec, 0.12f, 8, bgPanelColor);
-    Vector2 label4Pos = { 1616.0f, 746.0f };
-    std::string label4 = TruncateText(poppinsFontBold, "Spanish", 30.0f * FONT_SCALE, 1.0f, 160.0f);
-    DrawTextEx(poppinsFontBold, label4.c_str(), label4Pos, 30.0f * FONT_SCALE, 1.0f, WHITE);
+    int clickedIndex = -1;
+
+    BeginScissorMode((int)rightPanelRec.x, (int)listAreaTop, 
+                      (int)rightPanelRec.width, (int)(listAreaBottom - listAreaTop));
+
+    for (size_t i = 0; i < playlists.size(); ++i) {
+        int col = (int)(i % columns);
+        int row = (int)(i / columns);
+        
+        float cardX = 1284.0f + (col * 300.0f);
+        float cardY = listAreaTop - *scrollOffset + (row * rowHeight);
+        
+        if (cardY + 250.0f < listAreaTop || cardY > listAreaBottom) continue;
+        
+        Rectangle cardRec = { cardX, cardY, 211.0f, 250.0f };
+        
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, cardRec)) {
+            clickedIndex = (int)i;
+        }
+        
+        DrawRectangleRounded(cardRec, 0.15f, 8, bgPanelColor);
+        
+        Rectangle thumbRec = { cardX + 18.0f, cardY + 19.0f, 175.0f, 168.0f };
+        DrawRectangleRounded(thumbRec, 0.12f, 8, bgPanelColor);
+        
+        Vector2 labelPos = { cardX + 32.0f, cardY + 198.0f };
+        std::string label = TruncateText(poppinsFontBold, playlists[i].name, 30.0f * FONT_SCALE, 1.0f, 160.0f);
+        DrawTextEx(poppinsFontBold, label.c_str(), labelPos, 30.0f * FONT_SCALE, 1.0f, WHITE);
+    }
+
+    EndScissorMode();
+
+    return clickedIndex;
 }

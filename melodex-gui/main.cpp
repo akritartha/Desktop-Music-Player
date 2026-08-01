@@ -50,6 +50,17 @@ int main() {
     std::string searchText = "";
     bool searchBoxActive = false;
 
+    std::vector<PlaylistEntry> playlists = {
+        { "English", "" },
+        { "Hindi", "" },
+        { "Nepali", "" },
+        { "English", "" },
+        { "Hindi", "" },
+        { "Nepali", "" },
+        { "Spanish", "" }
+    };
+    float playlistScroll = 0.0f;
+
     while (!WindowShouldClose()) {
         float scale = fminf((float)GetScreenWidth() / 1920.0f, 
                              (float)GetScreenHeight() / 1080.0f);
@@ -133,7 +144,7 @@ int main() {
             currentSongIndex--;
             if (currentSongIndex < 0) currentSongIndex = (int)songs.size() - 1;
         }
-        DrawPlaylistBox(poppinsBold);
+        int clickedPlaylist = DrawPlaylistBox(poppinsBold, virtualMouse, &playlistScroll, playlists);
  
         EndTextureMode();
 

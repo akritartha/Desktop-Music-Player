@@ -2,7 +2,14 @@
 #define PLAYLISTBOX_H
 
 #include "raylib.h"
+#include <string>
+#include <vector>
 
-void DrawPlaylistBox(Font poppinsFont);
+struct PlaylistEntry {
+    std::string name;
+    std::string thumbnailPath;  // empty string if none
+};
+
+int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOffset, const std::vector<PlaylistEntry>& playlists);
 
 #endif // PLAYLISTBOX_H
