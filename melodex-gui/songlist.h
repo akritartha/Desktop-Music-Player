@@ -11,7 +11,7 @@ struct SongEntry {
     std::string thumbnailPath;  // path to image file, empty string if none
 };
 
-int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Vector2 virtualMouse, const std::vector<SongEntry>& songs, int currentSongIndex, const std::string& searchText);
+int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Vector2 virtualMouse, const std::vector<SongEntry>& songs, int currentSongIndex, const std::string& searchText, const std::vector<int>& activePlaylistSongIndices, bool showAllSongs, int* rightClickedSongIndex, Rectangle* rightClickedRowRec);
 void LoadSongListAssets();
 void UnloadSongListAssets();
 

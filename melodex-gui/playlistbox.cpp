@@ -5,7 +5,7 @@
 
 #define FONT_SCALE 1.0f
 
-int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOffset, const std::vector<PlaylistEntry>& playlists) {
+int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOffset, std::vector<PlaylistEntry>& playlists) {
     Color bgPanelColor = { 255, 255, 255, 76 };
 
     // 1. Right box background panel
@@ -59,7 +59,24 @@ int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOff
         DrawRectangleRounded(cardRec, 0.15f, 8, bgPanelColor);
         
         Rectangle thumbRec = { cardX + 18.0f, cardY + 19.0f, 175.0f, 168.0f };
-        DrawRectangleRounded(thumbRec, 0.12f, 8, bgPanelColor);
+        
+        PlaylistEntry& playlist = playlists[i];  // need non-const access
+        if (!playlist.thumbnailPath.empty() && !playlist.textureLoaded) {
+            if (FileExists(playlist.thumbnailPath.c_str())) {
+                playlist.thumbnailTexture = LoadTexture(playlist.thumbnailPath.c_str());
+                SetTextureFilter(playlist.thumbnailTexture, TEXTURE_FILTER_BILINEAR);
+            }
+            playlist.textureLoaded = true;
+        }
+
+
+
+        if (playlist.textureLoaded && playlist.thumbnailTexture.id != 0) {
+            Rectangle texSource = { 0, 0, (float)playlist.thumbnailTexture.width, (float)playlist.thumbnailTexture.height };
+            DrawTexturePro(playlist.thumbnailTexture, texSource, thumbRec, (Vector2){0, 0}, 0.0f, WHITE);
+        } else {
+            DrawRectangleRounded(thumbRec, 0.12f, 8, bgPanelColor);
+        }
         
         Vector2 labelPos = { cardX + 32.0f, cardY + 198.0f };
         std::string label = TruncateText(poppinsFontBold, playlists[i].name, 30.0f * FONT_SCALE, 1.0f, 160.0f);
@@ -69,4 +86,12 @@ int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOff
     EndScissorMode();
 
     return clickedIndex;
+}
+
+bool IsAddPlaylistButtonClicked(Vector2 virtualMouse) {
+    Rectangle btnRec = { 1620.0f, 155.0f, 190.0f, 40.0f };
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, btnRec)) {
+        return true;
+    }
+    return false;
 }

@@ -16,7 +16,7 @@ void UnloadSongListAssets() {
     UnloadTexture(magnifierTexture);
 }
 
-int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Vector2 virtualMouse, const std::vector<SongEntry>& songs, int currentSongIndex, const std::string& searchText) {
+int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Vector2 virtualMouse, const std::vector<SongEntry>& songs, int currentSongIndex, const std::string& searchText, const std::vector<int>& activePlaylistSongIndices, bool showAllSongs, int* rightClickedSongIndex, Rectangle* rightClickedRowRec) {
     int clickedIndex = -1;
     Color bgPanelColor = { 255, 255, 255, 76 };
 
@@ -53,6 +53,14 @@ int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Ve
 
     std::vector<int> filteredIndices;
     for (size_t i = 0; i < songs.size(); ++i) {
+        bool inPlaylist = showAllSongs;
+        if (!showAllSongs) {
+            for (int idx : activePlaylistSongIndices) {
+                if (idx == (int)i) { inPlaylist = true; break; }
+            }
+        }
+        if (!inPlaylist) continue;
+        
         if (searchText.empty()) {
             filteredIndices.push_back((int)i);
         } else {
@@ -93,6 +101,10 @@ int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Ve
             
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, rowRec)) {
                 clickedIndex = (int)i;
+            }
+            if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) && CheckCollisionPointRec(virtualMouse, rowRec)) {
+                *rightClickedSongIndex = (int)i;
+                *rightClickedRowRec = rowRec;
             }
 
             DrawRectangleRounded(rowRec, 0.15f, 8, rowColor);

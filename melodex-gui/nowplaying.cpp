@@ -74,3 +74,18 @@ float UpdateSoundLevel(Vector2 virtualMouse, float currentSoundLevel) {
     
     return currentSoundLevel;
 }
+
+float UpdateSeekPosition(Vector2 virtualMouse, float currentProgressPercent, float totalSeconds) {
+    Rectangle bar = { 505.0f, 915.0f, 910.0f, 8.7f };
+
+    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) &&
+        virtualMouse.y >= (bar.y - 15.0f) && virtualMouse.y <= (bar.y + 15.0f) &&
+        virtualMouse.x >= (bar.x - 10.0f) && virtualMouse.x <= (bar.x + bar.width + 10.0f)) {
+
+        float newPercent = (virtualMouse.x - bar.x) / bar.width;
+        newPercent = fmaxf(0.0f, fminf(1.0f, newPercent));
+        return newPercent;
+    }
+
+    return currentProgressPercent;
+}

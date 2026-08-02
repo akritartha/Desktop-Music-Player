@@ -1,4 +1,5 @@
 #include "textutils.h"
+#include <cstdio>
 
 std::string TruncateText(Font font, const std::string& text, float fontSize, float spacing, float maxWidth) {
     Vector2 textSize = MeasureTextEx(font, text.c_str(), fontSize, spacing);
@@ -17,4 +18,13 @@ std::string TruncateText(Font font, const std::string& text, float fontSize, flo
     }
     
     return "...";
+}
+
+std::string FormatTime(float totalSeconds) {
+    int secs = (int)totalSeconds;
+    int minutes = secs / 60;
+    int remaining = secs % 60;
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%d:%02d", minutes, remaining);
+    return std::string(buf);
 }
