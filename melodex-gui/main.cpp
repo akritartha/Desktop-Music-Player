@@ -23,14 +23,14 @@ int main() {
     RenderTexture2D targetTexture = LoadRenderTexture(1920, 1080);
     SetTextureFilter(targetTexture.texture, TEXTURE_FILTER_BILINEAR);
 
-    Font jotiOne = LoadFontEx("JotiOne-Regular.ttf", 64, 0, 0);
+    Font jotiOne = LoadFontEx("assets/Joti_One/JotiOne-Regular.ttf", 64, 0, 0);
     SetTextureFilter(jotiOne.texture, TEXTURE_FILTER_BILINEAR);
     GenTextureMipmaps(&jotiOne.texture);
-    Font poppins = LoadFontEx("Poppins/Poppins-Regular.ttf", 64, 0, 0);
+    Font poppins = LoadFontEx("assets/Poppins/Poppins-Regular.ttf", 64, 0, 0);
     SetTextureFilter(poppins.texture, TEXTURE_FILTER_BILINEAR);
     GenTextureMipmaps(&poppins.texture);
 
-    Font poppinsBold = LoadFontEx("Poppins/Poppins-Bold.ttf", 64, 0, 0);
+    Font poppinsBold = LoadFontEx("assets/Poppins/Poppins-Bold.ttf", 64, 0, 0);
     SetTextureFilter(poppinsBold.texture, TEXTURE_FILTER_BILINEAR);
     GenTextureMipmaps(&poppinsBold.texture);
 
