@@ -59,4 +59,6 @@ bool Playlist::alreadyExists(int songId){
     }
     return false;
 }
-const std::vector<int>& Playlist::songIds() const{}
+const std::vector<int>& Playlist::songIds() const{
+    return p_songId;
+}
