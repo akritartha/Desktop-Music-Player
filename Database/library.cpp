@@ -9,15 +9,8 @@ Library::Library(){}
 Library::Library(std::string dbPath):m_dbPath(dbPath){
 }
 bool Library::addSong(const Song& song){
-    if(!song.isValid() and alreadyExists(song.filepath()))
+    if(!song.isValid() or alreadyExists(song.filepath()))
         return false;
-    for (const auto& s : m_songs){
-        //auto lets compiler figure out the type
-        //for x in list:
-        if (s.filepath() == song.filepath()){
-            return false;
-        }
-    }
     m_songs.push_back(song); //appends song to the end of the vector
     return save();
 }

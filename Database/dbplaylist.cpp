@@ -9,11 +9,8 @@ int Playlist::count =1;
 Playlist::Playlist():p_id(count++){}
 Playlist::Playlist(std::string name,std::string dbPath):p_name(name),p_dbPath(dbPath),p_id(count++){}
 bool Playlist::addSong(int songId){
-    for(const auto id:p_songId){
-        if(songId==id){
-            return false;
-        }
-    }
+    if(alreadyExists(songId))
+        return false;
     p_songId.push_back(songId);
     return save();
 }
@@ -54,5 +51,12 @@ bool Playlist::removeSong(int id){
     }
     return false;
 }
-bool Playlist::alreadyExists(int songId){}
+bool Playlist::alreadyExists(int songId){
+    for(int i=0;i< static_cast<int>(p_songId.size());i++){
+        if(p_songId[i]==songId){
+            return true;
+        }
+    }
+    return false;
+}
 const std::vector<int>& Playlist::songIds() const{}
