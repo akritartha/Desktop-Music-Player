@@ -9,7 +9,7 @@ Library::Library(){}
 Library::Library(std::string dbPath):m_dbPath(dbPath){
 }
 bool Library::addSong(const Song& song){
-    if(!song.isValid() and !alreadyExists(song.filepath()))
+    if(!song.isValid() and alreadyExists(song.filepath()))
         return false;
     for (const auto& s : m_songs){
         //auto lets compiler figure out the type
@@ -35,7 +35,7 @@ bool Library::save(){
 }
 bool Library::removeSong(int id){
     for (int i=0;i<(int)m_songs.size();i++){ //.size() returns size_t type
-        if(m_songs[i].id()==id){
+        if(m_songs[i].id()==id and !std::filesystem::exists(m_songs[i].filepath())){
             m_songs.erase(m_songs.begin()+i);
             return save();
         }
@@ -45,10 +45,12 @@ bool Library::removeSong(int id){
 const std::vector<Song>& Library::allSongs() const{
     return m_songs;
 }
-bool Library::load(){
+bool Library::load(){ //why load exists is after the program is closed, m_songs becomes empty 
+    //during each opening of the app, m_songs is reloaded using the load method
     if(!std::filesystem::exists(m_dbPath)){
         return true; //file doesnt exist meaning its empty so empty library
     }
+    m_songs.clear();
     std::ifstream file(m_dbPath);
     if(!file.is_open()){
         return false;
@@ -65,7 +67,6 @@ bool Library::load(){
             continue; 
             //skip this line if id is not a valid integer
         }
-        s.setId(std::stoi(id));
         std::getline(ss,title ,'|');
         s.setTitle(title);
         std::getline(ss,artist ,'|');
@@ -111,6 +112,13 @@ int Library::scanFolders(const std::string& folderPath){
         }
     }
     return 0;
+}
+const Song* Library::getSongbyId(int id) const{
+    for(const auto &s:m_songs){
+        if(s.id()==id)
+            return &s;
+    }
+    return nullptr;
 }
 
 

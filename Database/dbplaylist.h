@@ -8,15 +8,15 @@ class Playlist{
         static int count;
         int p_id;
         std::string p_name;
-        std::vector<Song> p_songs;
+        std::vector<int> p_songId;
         std::string p_dbPath;
     public:
         Playlist();
         Playlist(std::string name ,std::string dbPath);
-        bool addSong(const Song& s);
+        bool addSong(int songId);
         bool save();
         bool load();
-        bool removeSong(int id);
-        bool alreadyExists(const std::string &filePath);
-        const std::vector<Song>& allSongs() const;
+        bool removeSong(int songId);
+        bool alreadyExists(int songId);
+        const std::vector<int>& songIds() const;
 };

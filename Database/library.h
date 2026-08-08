@@ -16,4 +16,5 @@ public:
     bool alreadyExists(const std::string &filePath);
     int scanFolders(const std::string &folderPath);
     const std::vector<Song>& allSongs() const;
+    const Song* getSongbyId(int id) const;
 };
