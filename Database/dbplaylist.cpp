@@ -45,6 +45,14 @@ bool Playlist::load(){
     }
     return true;
 }
-bool Playlist::removeSong(int id){}
+bool Playlist::removeSong(int id){
+    for(int i=0;i< static_cast<int>(p_songId.size());i++){
+        if(p_songId[i]==id){
+            p_songId.erase(p_songId.begin()+i);
+            return save();
+        }
+    }
+    return false;
+}
 bool Playlist::alreadyExists(int songId){}
 const std::vector<int>& Playlist::songIds() const{}

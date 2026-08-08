@@ -34,8 +34,8 @@ bool Library::save(){
     return true;
 }
 bool Library::removeSong(int id){
-    for (int i=0;i<(int)m_songs.size();i++){ //.size() returns size_t type
-        if(m_songs[i].id()==id and !std::filesystem::exists(m_songs[i].filepath())){
+    for (int i=0;i<static_cast<int>(m_songs.size());i++){ //.size() returns size_t type
+        if(m_songs[i].id()==id){
             m_songs.erase(m_songs.begin()+i);
             return save();
         }
