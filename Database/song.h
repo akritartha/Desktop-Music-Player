@@ -13,7 +13,7 @@ private:
 public:
     Song();
     Song(std::string title,std::string artist, std::string album,
-    std::string path,int duration);
+    std::string path,int duration=0);
     void setTitle(std::string title) ;
     void setArtist(std::string artist) ;
     void setAlbum(std::string album) ;

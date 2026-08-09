@@ -13,6 +13,8 @@ public:
     bool save();
     bool removeSong(int id); // id is primary key
     bool load();
-
-    const std::vector<Song>&allSongs() const;
+    bool alreadyExists(const std::string &filePath);
+    int scanFolders(const std::string &folderPath);
+    const std::vector<Song>& allSongs() const;
+    const Song* getSongbyId(int id) const;
 };
