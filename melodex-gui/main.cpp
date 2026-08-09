@@ -58,9 +58,13 @@ int main()
 
     bool isPlaying = false;
     float soundLevel = 0.7f;
-    float currentSeconds = 92.0f; // 1:32 starting point, placeholder
-    float totalSeconds = 232.0f;  // 3:52 total, placeholder (will come from DB later)
+    float currentSeconds = 0.0f;
+    float totalSeconds = 0.0f;
     float songListScroll = 0.0f;
+    float lastDraggedPercent = -1.0f;
+
+    Music currentMusic = { 0 };
+    int loadedSongIndex = -1;
 
     Library library("musicdb.txt");
     library.load();
@@ -78,16 +82,31 @@ int main()
     }
 
     int currentSongIndex = 0;
+
+    auto LoadSongAudio = [&](int index) 
+    {
+    if (loadedSongIndex != -1 && currentMusic.frameCount > 0) {
+        StopMusicStream(currentMusic);
+        UnloadMusicStream(currentMusic);
+    }
+    if (index >= 0 && index < (int)library.allSongs().size()) {
+        std::string path = library.allSongs()[index].filepath();
+        currentMusic = LoadMusicStream(path.c_str());
+        SetMusicVolume(currentMusic, soundLevel);
+        loadedSongIndex = index;
+        totalSeconds = GetMusicTimeLength(currentMusic);
+        currentSeconds = 0.0f;
+     }
+    };
+
+    LoadSongAudio(currentSongIndex);
+    
     std::string searchText = "";
     bool searchBoxActive = false;
 
     std::vector<PlaylistEntry> playlists = {
         {"All Songs", "", {}, false, {}, true},
-        {"Favorites", "", {}, false, {}, true},
-        {"English", "", {}, false, {}, false},
-        {"Hindi", "", {}, false, {}, false},
-        {"Nepali", "", {}, false, {}, false},
-        {"Spanish", "", {}, false, {}, false}};
+        {"Favorites", "", {}, false, {}, true}};
         
     std::vector<Playlist> playlistBackends;
     for (const auto& p : playlists) {
@@ -222,22 +241,33 @@ int main()
         SongEntry currentSong = songs[currentSongIndex];
 
         soundLevel = UpdateSoundLevel(virtualMouse, soundLevel);
+        SetMusicVolume(currentMusic,soundLevel);
+        float progressPercent = (totalSeconds > 0) ? (currentSeconds / totalSeconds) : 0.0f;
+        float draggedPercent = UpdateSeekPosition(virtualMouse, progressPercent, totalSeconds);
 
-        float progressPercent = currentSeconds / totalSeconds;
-        progressPercent = UpdateSeekPosition(virtualMouse, progressPercent, totalSeconds);
-        currentSeconds = progressPercent * totalSeconds;
+        bool isDragging = IsMouseButtonDown(MOUSE_LEFT_BUTTON) && (draggedPercent != progressPercent);
+        if (isDragging) {
+            progressPercent = draggedPercent;
+            lastDraggedPercent = draggedPercent;
+        }
 
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && totalSeconds > 0 && lastDraggedPercent >= 0.0f) {
+            float newTime = lastDraggedPercent * totalSeconds;
+            SeekMusicStream(currentMusic, newTime);
+            currentSeconds = newTime;
+            lastDraggedPercent = -1.0f;
+        }
         if (IsKeyPressed(KEY_UP))
         {
             soundLevel += 0.05f;
-            if (soundLevel > 1.0f)
-                soundLevel = 1.0f;
+            if (soundLevel > 1.0f) soundLevel = 1.0f;
+            SetMusicVolume(currentMusic,soundLevel);
         }
         if (IsKeyPressed(KEY_DOWN))
         {
             soundLevel -= 0.05f;
-            if (soundLevel < 0.0f)
-                soundLevel = 0.0f;
+            if (soundLevel < 0.0f) soundLevel = 0.0f;
+            SetMusicVolume(currentMusic,soundLevel);
         }
 
         if (!showCreatePlaylistPopup)
@@ -245,33 +275,41 @@ int main()
             if (IsPlayButtonClicked(virtualMouse))
             {
                 isPlaying = !isPlaying;
-                printf("Play button clicked, isPlaying = %s\n", isPlaying ? "true" : "false");
+                if (isPlaying) 
+                {
+                PlayMusicStream(currentMusic);
+                } 
+                else 
+                {
+                PauseMusicStream(currentMusic);
+                }
+    
             }
         }
 
         if (isPlaying)
         {
-            currentSeconds += GetFrameTime();
-            if (currentSeconds >= totalSeconds)
-            {
-                currentSeconds = 0.0f;
-                currentSongIndex++;
-                if (currentSongIndex >= (int)songs.size())
-                    currentSongIndex = 0;
-            }
+            UpdateMusicStream(currentMusic);
+            currentSeconds = GetMusicTimePlayed(currentMusic);
+            if (currentSeconds >= totalSeconds && totalSeconds > 0) {
+            currentSongIndex++;
+            if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
+            LoadSongAudio(currentSongIndex);
+            PlayMusicStream(currentMusic);
+        }
         }
 
         if (IsKeyPressed(KEY_RIGHT))
         {
             currentSeconds += 5.0f;
-            if (currentSeconds > totalSeconds)
-                currentSeconds = totalSeconds;
+            if (currentSeconds > totalSeconds)  currentSeconds = totalSeconds;
+            SeekMusicStream(currentMusic,currentSeconds);
         }
         if (IsKeyPressed(KEY_LEFT))
         {
             currentSeconds -= 5.0f;
-            if (currentSeconds < 0.0f)
-                currentSeconds = 0.0f;
+            if (currentSeconds < 0.0f) currentSeconds = 0.0f;
+            SeekMusicStream(currentMusic,currentSeconds);
         }
 
         BeginTextureMode(targetTexture);
@@ -308,22 +346,23 @@ int main()
             if (clickedSong != -1 && clickedSong != currentSongIndex)
             {
                 currentSongIndex = clickedSong;
-                currentSeconds = 0.0f;
+                LoadSongAudio(currentSongIndex);
+                if(isPlaying) PlayMusicStream(currentMusic);
             }
 
             if (IsNextButtonClicked(virtualMouse))
             {
                 currentSongIndex++;
-                if (currentSongIndex >= (int)songs.size())
-                    currentSongIndex = 0;
-                currentSeconds = 0.0f;
+                if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
+                LoadSongAudio(currentSongIndex);
+                if(isPlaying) PlayMusicStream(currentMusic);
             }
             if (IsPreviousButtonClicked(virtualMouse))
             {
                 currentSongIndex--;
-                if (currentSongIndex < 0)
-                    currentSongIndex = (int)songs.size() - 1;
-                currentSeconds = 0.0f;
+                if (currentSongIndex < 0) currentSongIndex = (int)songs.size() - 1;
+                LoadSongAudio(currentSongIndex);
+                if(isPlaying) PlayMusicStream(currentMusic);
             }
         }
         int clickedPlaylist = DrawPlaylistBox(poppinsBold, virtualMouse, &playlistScroll, playlists);
