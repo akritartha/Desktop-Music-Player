@@ -1,0 +1,4 @@
+1|Hey There Delilah|Plain White T's|Album1|songs/song1.mp3|180
+2|Blue|Yung Kai|Album2|songs/song2.mp3|210
+3|Albatross _ Bachau _ 2020 _ [HyDNDgZjDws]|Unknown Artist|Unknown Album|songs\Albatross _ Bachau _ 2020 _ [HyDNDgZjDws].mp3|0
+4|Intro - Ma Ra Malai _ ALBATROSS [8vcdlGvBugo]|Unknown Artist|Unknown Album|songs\Intro - Ma Ra Malai _ ALBATROSS [8vcdlGvBugo].mp3|0

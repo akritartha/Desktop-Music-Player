@@ -25,8 +25,8 @@ ContextMenuAction DrawSongContextMenu(Font poppinsFont, Rectangle anchorRowRec,
     
     Rectangle favBtnRec = { menuX, menuY, menuWidth, 40.0f };
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, favBtnRec)) {
-        return { CTX_TOGGLE_FAVORITE, -1 };
-    }
+    return { CTX_TOGGLE_FAVORITE, -1 };
+}
 
     // 4. Menu item 2
     DrawTextEx(poppinsFont, "Add to Playlist >", {menuX + 15.0f, menuY + 55.0f}, 16.0f, 1.0f, WHITE);
