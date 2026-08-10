@@ -36,6 +36,7 @@ int main()
     InitWindow(1920, 1080, "Melodex");
     InitAudioDevice();
     SetWindowState(FLAG_WINDOW_RESIZABLE);
+    SetWindowState(FLAG_WINDOW_ALWAYS_RUN);
     SetTargetFPS(60);
 
     RenderTexture2D targetTexture = LoadRenderTexture(1920, 1080);
@@ -291,7 +292,7 @@ int main()
         {
             UpdateMusicStream(currentMusic);
             currentSeconds = GetMusicTimePlayed(currentMusic);
-            if (currentSeconds >= totalSeconds && totalSeconds > 0) {
+            if (currentSeconds >= totalSeconds - 0.1f && totalSeconds > 0) {
             currentSongIndex++;
             if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
             LoadSongAudio(currentSongIndex);
