@@ -39,7 +39,7 @@ void UnloadControlIcons() {
     UnloadTexture(volumeTex);
 }
 
-void DrawControls(bool isPlaying) {
+void DrawControls(bool isPlaying, bool isRepeatOn) {
     Vector2 origin = {0.0f, 0.0f};
 
     // a. Shuffle icon
@@ -66,7 +66,8 @@ void DrawControls(bool isPlaying) {
     // e. Repeat icon
     Rectangle repeatSrc = { 0.0f, 0.0f, (float)repeatTex.width, (float)repeatTex.height };
     Rectangle repeatDest = { 1190.0f, 965.0f, 50.0f, 50.0f };
-    DrawTexturePro(repeatTex, repeatSrc, repeatDest, origin, 0.0f, WHITE);
+    Color repeatColor = isRepeatOn ? SKYBLUE : WHITE;
+    DrawTexturePro(repeatTex, repeatSrc, repeatDest, origin, 0.0f, repeatColor);
 
     // f. Volume icon
     Rectangle volumeSrc = { 0.0f, 0.0f, (float)volumeTex.width, (float)volumeTex.height };
@@ -93,6 +94,14 @@ bool IsNextButtonClicked(Vector2 virtualMouse) {
 bool IsPreviousButtonClicked(Vector2 virtualMouse) {
     Rectangle prevBtnRec = { 793.0f, 965.0f, 60.0f, 60.0f };
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, prevBtnRec)) {
+        return true;
+    }
+    return false;
+}
+
+bool IsRepeatButtonClicked(Vector2 virtualMouse) {
+    Rectangle repeatBtnRec = { 1190.0f, 965.0f, 50.0f, 50.0f };
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, repeatBtnRec)) {
         return true;
     }
     return false;

@@ -58,6 +58,7 @@ int main()
     LoadSongListAssets();
 
     bool isPlaying = false;
+    bool isRepeatOn = false;
     float soundLevel = 0.7f;
     float currentSeconds = 0.0f;
     float totalSeconds = 0.0f;
@@ -287,17 +288,27 @@ int main()
     
             }
         }
-
-        if (isPlaying)
+        if (!showCreatePlaylistPopup) 
         {
+            if (IsRepeatButtonClicked(virtualMouse)) {
+                isRepeatOn = !isRepeatOn;
+            }
+        }
+
+        if (isPlaying) {
             UpdateMusicStream(currentMusic);
             currentSeconds = GetMusicTimePlayed(currentMusic);
-            if (currentSeconds >= totalSeconds - 0.1f && totalSeconds > 0) {
-            currentSongIndex++;
-            if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
-            LoadSongAudio(currentSongIndex);
-            PlayMusicStream(currentMusic);
-        }
+            if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f) {
+                if (isRepeatOn) {
+                    SeekMusicStream(currentMusic, 0.0f);
+                    currentSeconds = 0.0f;
+                } else {
+                    currentSongIndex++;
+                    if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
+                    LoadSongAudio(currentSongIndex);
+                    PlayMusicStream(currentMusic);
+                }
+            }
         }
 
         if (IsKeyPressed(KEY_RIGHT))
@@ -327,7 +338,7 @@ int main()
         std::string currentTimeStr = FormatTime(currentSeconds);
         std::string totalTimeStr = FormatTime(totalSeconds);
         DrawNowPlayingBar(poppins, poppinsBold, currentSong.title.c_str(), currentSong.artist.c_str(), progressPercent, currentTimeStr.c_str(), totalTimeStr.c_str(), soundLevel);
-        DrawControls(isPlaying);
+        DrawControls(isPlaying, isRepeatOn);
         DrawNowCard(jotiOne, poppinsBold, poppins, currentSong.title.c_str(), currentSong.artist.c_str());
         bool showAllSongs = playlists[currentPlaylistIndex].isDefault && playlists[currentPlaylistIndex].name == "All Songs";
         rightClickedSongIndex = -1;
