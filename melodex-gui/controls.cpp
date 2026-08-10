@@ -39,13 +39,14 @@ void UnloadControlIcons() {
     UnloadTexture(volumeTex);
 }
 
-void DrawControls(bool isPlaying, bool isRepeatOn) {
+void DrawControls(bool isPlaying, bool isRepeatOn, bool isShuffleOn) {
     Vector2 origin = {0.0f, 0.0f};
 
     // a. Shuffle icon
     Rectangle shuffleSrc = { 0.0f, 0.0f, (float)shuffleTex.width, (float)shuffleTex.height };
     Rectangle shuffleDest = { 672.0f, 969.0f, 50.0f, 50.0f };
-    DrawTexturePro(shuffleTex, shuffleSrc, shuffleDest, origin, 0.0f, WHITE);
+    Color shuffleColor = isShuffleOn ? SKYBLUE : WHITE;
+    DrawTexturePro(shuffleTex, shuffleSrc, shuffleDest, origin, 0.0f, shuffleColor);
 
     // b. Previous button (flipped skip icon)
     Rectangle prevSrc = { 0.0f, 0.0f, (float)skipTex.width * -1.0f, (float)skipTex.height };
@@ -102,6 +103,14 @@ bool IsPreviousButtonClicked(Vector2 virtualMouse) {
 bool IsRepeatButtonClicked(Vector2 virtualMouse) {
     Rectangle repeatBtnRec = { 1190.0f, 965.0f, 50.0f, 50.0f };
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, repeatBtnRec)) {
+        return true;
+    }
+    return false;
+}
+
+bool IsShuffleButtonClicked(Vector2 virtualMouse) {
+    Rectangle shuffleBtnRec = { 672.0f, 969.0f, 50.0f, 50.0f };
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, shuffleBtnRec)) {
         return true;
     }
     return false;

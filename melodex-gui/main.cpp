@@ -14,6 +14,8 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <cstdlib>
+#include <ctime>
 #include "../Database/library.h"
 #include "../Database/song.h"
 #include "../Database/dbplaylist.h"
@@ -33,6 +35,7 @@ int FindSongIndexById(const std::vector<Song>& allSongs, int id) {
 
 int main()
 {
+    srand((unsigned int)time(nullptr));
     InitWindow(1920, 1080, "Melodex");
     InitAudioDevice();
     SetWindowState(FLAG_WINDOW_RESIZABLE);
@@ -59,6 +62,7 @@ int main()
 
     bool isPlaying = false;
     bool isRepeatOn = false;
+    bool isShuffleOn = false;
     float soundLevel = 0.7f;
     float currentSeconds = 0.0f;
     float totalSeconds = 0.0f;
@@ -294,28 +298,69 @@ int main()
                 isRepeatOn = !isRepeatOn;
             }
         }
-
+        if (!showCreatePlaylistPopup)
+        {
+        if (IsShuffleButtonClicked(virtualMouse)) 
+        {
+            isShuffleOn = !isShuffleOn;
+        }
+        }
         if (isPlaying) {
             UpdateMusicStream(currentMusic);
             currentSeconds = GetMusicTimePlayed(currentMusic);
             if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f) {
-                if (isRepeatOn) {
-                    SeekMusicStream(currentMusic, 0.0f);
-                    currentSeconds = 0.0f;
-                } else {
-                    currentSongIndex++;
-                    if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
-                    LoadSongAudio(currentSongIndex);
-                    PlayMusicStream(currentMusic);
-                }
+        if (isRepeatOn) {
+            SeekMusicStream(currentMusic, 0.0f);
+            currentSeconds = 0.0f;
+        }
+         else if (isShuffleOn && songs.size() > 1) {
+            int newIndex;
+            do {
+                newIndex = rand() % songs.size();
+            } while (newIndex == currentSongIndex);
+            currentSongIndex = newIndex;
+            LoadSongAudio(currentSongIndex);
+            PlayMusicStream(currentMusic);
+        } 
+        else {
+            currentSongIndex++;
+            if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
+            LoadSongAudio(currentSongIndex);
+            PlayMusicStream(currentMusic);
+        }
             }
         }
 
-        if (IsKeyPressed(KEY_RIGHT))
-        {
+        if (IsKeyPressed(KEY_RIGHT)) {
             currentSeconds += 5.0f;
-            if (currentSeconds > totalSeconds)  currentSeconds = totalSeconds;
-            SeekMusicStream(currentMusic,currentSeconds);
+            if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f) {
+                if (isRepeatOn)
+                {
+                    currentSeconds = 0.0f;
+                    SeekMusicStream(currentMusic, 0.0f);
+                }
+                else if (isShuffleOn && songs.size() > 1) {
+                    int newIndex;
+                    do 
+                    {
+                        newIndex = rand() % songs.size();
+                    } while (newIndex == currentSongIndex);
+                    currentSongIndex = newIndex;
+                    LoadSongAudio(currentSongIndex);
+                    if (isPlaying) PlayMusicStream(currentMusic);
+                } 
+                else 
+                {
+                    currentSongIndex++;
+                    if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
+                    LoadSongAudio(currentSongIndex);
+                    if (isPlaying) PlayMusicStream(currentMusic);
+                }
+            } 
+            else 
+            {
+                SeekMusicStream(currentMusic, currentSeconds);
+            }
         }
         if (IsKeyPressed(KEY_LEFT))
         {
@@ -338,7 +383,7 @@ int main()
         std::string currentTimeStr = FormatTime(currentSeconds);
         std::string totalTimeStr = FormatTime(totalSeconds);
         DrawNowPlayingBar(poppins, poppinsBold, currentSong.title.c_str(), currentSong.artist.c_str(), progressPercent, currentTimeStr.c_str(), totalTimeStr.c_str(), soundLevel);
-        DrawControls(isPlaying, isRepeatOn);
+        DrawControls(isPlaying, isRepeatOn, isShuffleOn);
         DrawNowCard(jotiOne, poppinsBold, poppins, currentSong.title.c_str(), currentSong.artist.c_str());
         bool showAllSongs = playlists[currentPlaylistIndex].isDefault && playlists[currentPlaylistIndex].name == "All Songs";
         rightClickedSongIndex = -1;
@@ -362,12 +407,19 @@ int main()
                 if(isPlaying) PlayMusicStream(currentMusic);
             }
 
-            if (IsNextButtonClicked(virtualMouse))
-            {
-                currentSongIndex++;
-                if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
+            if (IsNextButtonClicked(virtualMouse)) {
+                if (isShuffleOn && songs.size() > 1) {
+                    int newIndex;
+                    do {
+                        newIndex = rand() % songs.size();
+                    } while (newIndex == currentSongIndex);
+                    currentSongIndex = newIndex;
+                } else {
+                    currentSongIndex++;
+                    if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
+                }
                 LoadSongAudio(currentSongIndex);
-                if(isPlaying) PlayMusicStream(currentMusic);
+                if (isPlaying) PlayMusicStream(currentMusic);
             }
             if (IsPreviousButtonClicked(virtualMouse))
             {
