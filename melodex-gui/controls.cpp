@@ -9,6 +9,7 @@ static Texture2D playTex;
 static Texture2D pauseTex;
 static Texture2D repeatTex;
 static Texture2D volumeTex;
+static Texture2D muteTex;
 
 void LoadControlIcons() {
     shuffleTex = LoadTexture("icons/shuffle.png");
@@ -26,8 +27,17 @@ void LoadControlIcons() {
     repeatTex = LoadTexture("icons/repeat.png");
     SetTextureFilter(repeatTex, TEXTURE_FILTER_BILINEAR);
     
-    volumeTex = LoadTexture("icons/volume.png");
+    Image volumeImg = LoadImage("icons/volume.png");
+    ImageColorReplace(&volumeImg, BLACK, WHITE);
+    volumeTex = LoadTextureFromImage(volumeImg);
+    UnloadImage(volumeImg);
     SetTextureFilter(volumeTex, TEXTURE_FILTER_BILINEAR);
+
+    Image muteImg = LoadImage("icons/mute.png");
+    ImageColorReplace(&muteImg, BLACK, WHITE);
+    muteTex = LoadTextureFromImage(muteImg);
+    UnloadImage(muteImg);
+    SetTextureFilter(muteTex, TEXTURE_FILTER_BILINEAR);
 }
 
 void UnloadControlIcons() {
@@ -36,7 +46,8 @@ void UnloadControlIcons() {
     UnloadTexture(playTex);
     UnloadTexture(pauseTex);
     UnloadTexture(repeatTex);
-    UnloadTexture(volumeTex);
+    UnloadTexture(volumeTex); 
+    UnloadTexture(muteTex); 
 }
 
 void DrawControls(bool isPlaying, bool isRepeatOn, bool isShuffleOn,bool isMuted) {
@@ -71,10 +82,10 @@ void DrawControls(bool isPlaying, bool isRepeatOn, bool isShuffleOn,bool isMuted
     DrawTexturePro(repeatTex, repeatSrc, repeatDest, origin, 0.0f, repeatColor);
 
     // f. Volume icon
-    Rectangle volumeSrc = { 0.0f, 0.0f, (float)volumeTex.width, (float)volumeTex.height };
+    Texture2D activeVolumeTex = isMuted ? muteTex : volumeTex;
+    Rectangle volumeSrc = { 0.0f, 0.0f, (float)activeVolumeTex.width, (float)activeVolumeTex.height };
     Rectangle volumeDest = { 1580.0f, 974.0f, 40.0f, 40.0f };
-    Color volumeColor =isMuted? RED: WHITE;
-    DrawTexturePro(volumeTex, volumeSrc, volumeDest, origin, 0.0f, volumeColor);
+    DrawTexturePro(activeVolumeTex, volumeSrc, volumeDest, origin, 0.0f, WHITE);
 }
 
 bool IsPlayButtonClicked(Vector2 virtualMouse) {
@@ -112,6 +123,13 @@ bool IsRepeatButtonClicked(Vector2 virtualMouse) {
 bool IsShuffleButtonClicked(Vector2 virtualMouse) {
     Rectangle shuffleBtnRec = { 672.0f, 969.0f, 50.0f, 50.0f };
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, shuffleBtnRec)) {
+        return true;
+    }
+    return false;
+}
+bool IsVolumeButtonClicked(Vector2 virtualMouse) {
+    Rectangle volumeBtnRec = { 1580.0f, 974.0f, 40.0f, 40.0f };
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, volumeBtnRec)) {
         return true;
     }
     return false;
