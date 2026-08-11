@@ -5,7 +5,7 @@
 
 #define FONT_SCALE 1.0f
 
-int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOffset, std::vector<PlaylistEntry>& playlists) {
+int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOffset, std::vector<PlaylistEntry>& playlists, int* rightClickedPlaylistIndex) {
     Color bgPanelColor = { 255, 255, 255, 76 };
 
     // 1. Right box background panel
@@ -55,7 +55,9 @@ int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOff
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, cardRec)) {
             clickedIndex = (int)i;
         }
-        
+        if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON) && CheckCollisionPointRec(virtualMouse, cardRec) && !playlists[i].isDefault) {
+            *rightClickedPlaylistIndex = (int)i;
+        }
         DrawRectangleRounded(cardRec, 0.15f, 8, bgPanelColor);
         
         Rectangle thumbRec = { cardX + 18.0f, cardY + 19.0f, 175.0f, 168.0f };
@@ -93,5 +95,6 @@ bool IsAddPlaylistButtonClicked(Vector2 virtualMouse) {
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, btnRec)) {
         return true;
     }
+    
     return false;
 }

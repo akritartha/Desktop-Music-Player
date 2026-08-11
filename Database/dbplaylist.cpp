@@ -24,6 +24,19 @@ bool Playlist::save(){
     return true;
     
 }
+
+bool Playlist::deletePlaylistFile()
+{
+    if (std::filesystem::exists(p_dbPath)) {
+        return std::filesystem::remove(p_dbPath);
+    }
+    return true; // nothing to delete, treat as success
+}
+
+
+
+
+
 bool Playlist::load(){
     if(!std::filesystem::exists(p_dbPath))
         return true;

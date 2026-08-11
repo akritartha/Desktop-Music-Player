@@ -17,6 +17,7 @@ class Playlist{
         bool save();
         bool load();
         bool removeSong(int songId);
+        bool deletePlaylistFile();
         bool alreadyExists(int songId);
         const std::vector<int>& songIds() const;
 };

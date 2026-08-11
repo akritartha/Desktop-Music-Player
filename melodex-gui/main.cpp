@@ -21,17 +21,54 @@
 #include "../Database/dbplaylist.h"
 
 
+
 SongEntry ToSongEntry(const Song &s)
 {
     return SongEntry{s.title(), s.artist(), ""};
 }
 
-int FindSongIndexById(const std::vector<Song>& allSongs, int id) {
+int FindSongIndexById(const std::vector<Song>& allSongs, int id) 
+{
     for (int i = 0; i < (int)allSongs.size(); i++) {
         if (allSongs[i].id() == id) return i;
     }
     return -1;
 }
+
+std::vector<int> GetActiveIndices(const std::vector<PlaylistEntry>& playlists, int playlistIdx, int totalSongs)
+{
+    bool isAllSongs = playlists[playlistIdx].isDefault && playlists[playlistIdx].name == "All Songs";
+    if (isAllSongs) {
+        std::vector<int> all;
+        for (int i = 0; i < totalSongs; i++) all.push_back(i);
+        return all;
+    }
+    return playlists[playlistIdx].songIndices;
+}
+
+enum AdvanceDirection { ADV_NEXT, ADV_PREV };
+
+void AdvanceSong(int& currentSongIndex, const std::vector<PlaylistEntry>& playlists, int currentPlaylistIndex,
+                  int totalSongs, bool shuffleOn, AdvanceDirection dir) {
+    std::vector<int> activeIndices = GetActiveIndices(playlists, currentPlaylistIndex, totalSongs);
+    if (activeIndices.empty()) return;
+
+    if (shuffleOn && activeIndices.size() > 1) {
+        int newIndex;
+        do {
+            newIndex = activeIndices[rand() % activeIndices.size()];
+        } while (newIndex == currentSongIndex);
+        currentSongIndex = newIndex;
+        return;
+    }
+
+    auto it = std::find(activeIndices.begin(), activeIndices.end(), currentSongIndex);
+    int pos = (it != activeIndices.end()) ? (int)(it - activeIndices.begin()) : 0;
+    int size = (int)activeIndices.size();
+    pos = (dir == ADV_NEXT) ? (pos + 1) % size : (pos - 1 + size) % size;
+    currentSongIndex = activeIndices[pos];
+}
+
 
 int main()
 {
@@ -172,6 +209,9 @@ int main()
     bool contextMenuOpen = false;
     bool contextMenuShowSubmenu = false;
     int contextMenuSongIndex = -1;
+    int rightClickedPlaylistIndex = -1;
+    bool deletePlaylistConfirmOpen = false;
+    int playlistToDeleteIndex = -1;
     Rectangle contextMenuAnchorRec = {0, 0, 0, 0};
     std::vector<bool> favoriteFlags(songs.size(), false);
 
@@ -278,7 +318,7 @@ int main()
 
         if (!showCreatePlaylistPopup)
         {
-            if (IsPlayButtonClicked(virtualMouse))
+            if (IsPlayButtonClicked(virtualMouse)|| IsKeyPressed(KEY_SPACE))
             {
                 isPlaying = !isPlaying;
                 if (isPlaying) 
@@ -295,6 +335,7 @@ int main()
         if (!showCreatePlaylistPopup) 
         {
             if (IsRepeatButtonClicked(virtualMouse)) {
+                (isShuffleOn)?(isShuffleOn=!isShuffleOn):true;
                 isRepeatOn = !isRepeatOn;
             }
         }
@@ -302,63 +343,39 @@ int main()
         {
         if (IsShuffleButtonClicked(virtualMouse)) 
         {
-            isShuffleOn = !isShuffleOn;
+            (isRepeatOn)?(isRepeatOn=!isRepeatOn):true;
+            isShuffleOn=!isShuffleOn;
         }
         }
-        if (isPlaying) {
+        if (isPlaying) 
+        {
             UpdateMusicStream(currentMusic);
             currentSeconds = GetMusicTimePlayed(currentMusic);
             if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f) {
-        if (isRepeatOn) {
-            SeekMusicStream(currentMusic, 0.0f);
-            currentSeconds = 0.0f;
-        }
-         else if (isShuffleOn && songs.size() > 1) {
-            int newIndex;
-            do {
-                newIndex = rand() % songs.size();
-            } while (newIndex == currentSongIndex);
-            currentSongIndex = newIndex;
-            LoadSongAudio(currentSongIndex);
-            PlayMusicStream(currentMusic);
-        } 
-        else {
-            currentSongIndex++;
-            if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
-            LoadSongAudio(currentSongIndex);
-            PlayMusicStream(currentMusic);
-        }
+                if (isRepeatOn) {
+                    SeekMusicStream(currentMusic, 0.0f);
+                    currentSeconds = 0.0f;
+                } else {
+                    AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
+                    LoadSongAudio(currentSongIndex);
+                    PlayMusicStream(currentMusic);
+                }
             }
         }
 
-        if (IsKeyPressed(KEY_RIGHT)) {
+        if (IsKeyPressed(KEY_RIGHT))
+        {
             currentSeconds += 5.0f;
             if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f) {
-                if (isRepeatOn)
-                {
+                if (isRepeatOn) {
                     currentSeconds = 0.0f;
                     SeekMusicStream(currentMusic, 0.0f);
-                }
-                else if (isShuffleOn && songs.size() > 1) {
-                    int newIndex;
-                    do 
-                    {
-                        newIndex = rand() % songs.size();
-                    } while (newIndex == currentSongIndex);
-                    currentSongIndex = newIndex;
-                    LoadSongAudio(currentSongIndex);
-                    if (isPlaying) PlayMusicStream(currentMusic);
-                } 
-                else 
-                {
-                    currentSongIndex++;
-                    if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
+                } else {
+                    AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
                     LoadSongAudio(currentSongIndex);
                     if (isPlaying) PlayMusicStream(currentMusic);
                 }
-            } 
-            else 
-            {
+            } else {
                 SeekMusicStream(currentMusic, currentSeconds);
             }
         }
@@ -407,29 +424,27 @@ int main()
                 if(isPlaying) PlayMusicStream(currentMusic);
             }
 
-            if (IsNextButtonClicked(virtualMouse)) {
-                if (isShuffleOn && songs.size() > 1) {
-                    int newIndex;
-                    do {
-                        newIndex = rand() % songs.size();
-                    } while (newIndex == currentSongIndex);
-                    currentSongIndex = newIndex;
-                } else {
-                    currentSongIndex++;
-                    if (currentSongIndex >= (int)songs.size()) currentSongIndex = 0;
-                }
-                LoadSongAudio(currentSongIndex);
-                if (isPlaying) PlayMusicStream(currentMusic);
-            }
-            if (IsPreviousButtonClicked(virtualMouse))
-            {
-                currentSongIndex--;
-                if (currentSongIndex < 0) currentSongIndex = (int)songs.size() - 1;
-                LoadSongAudio(currentSongIndex);
-                if(isPlaying) PlayMusicStream(currentMusic);
-            }
+        if (IsNextButtonClicked(virtualMouse)) 
+        {
+            AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
+            LoadSongAudio(currentSongIndex);
+            if (isPlaying) PlayMusicStream(currentMusic);
         }
-        int clickedPlaylist = DrawPlaylistBox(poppinsBold, virtualMouse, &playlistScroll, playlists);
+        if (IsPreviousButtonClicked(virtualMouse))
+        {
+            AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), false, ADV_PREV);
+            LoadSongAudio(currentSongIndex);
+            if (isPlaying) PlayMusicStream(currentMusic);
+        }
+        }
+        rightClickedPlaylistIndex = -1;
+        int clickedPlaylist = DrawPlaylistBox(poppinsBold, virtualMouse, &playlistScroll, playlists, &rightClickedPlaylistIndex);
+
+        if (rightClickedPlaylistIndex != -1) {
+            deletePlaylistConfirmOpen = true;
+            playlistToDeleteIndex = rightClickedPlaylistIndex;
+            rightClickedPlaylistIndex = -1;
+        }
 
         if (!showCreatePlaylistPopup)
         {
@@ -449,6 +464,43 @@ int main()
                                     newPlaylistCoverPath, &nameFieldActive,
                                     &coverFieldActive, virtualMouse);
         }
+        if (deletePlaylistConfirmOpen && playlistToDeleteIndex != -1) 
+        {
+            Rectangle popupRec = { 760.0f, 460.0f, 400.0f, 160.0f };
+            DrawRectangleRounded(popupRec, 0.1f, 8, (Color){ 0, 31, 62, 240 });
+
+            std::string msg = "Delete \"" + playlists[playlistToDeleteIndex].name + "\"?";
+            DrawTextEx(poppins, msg.c_str(), { popupRec.x + 20.0f, popupRec.y + 20.0f }, 20.0f, 1.0f, WHITE);
+
+            Rectangle yesBtn = { popupRec.x + 40.0f, popupRec.y + 90.0f, 140.0f, 45.0f };
+            Rectangle noBtn = { popupRec.x + 220.0f, popupRec.y + 90.0f, 140.0f, 45.0f };
+
+            DrawRectangleRounded(yesBtn, 0.2f, 8, (Color){ 0, 115, 230, 255 });
+            DrawTextEx(poppins, "Delete", { yesBtn.x + 35.0f, yesBtn.y + 12.0f }, 18.0f, 1.0f, WHITE);
+
+            DrawRectangleRounded(noBtn, 0.2f, 8, (Color){ 60, 90, 130, 255 });
+            DrawTextEx(poppins, "Cancel", { noBtn.x + 35.0f, noBtn.y + 12.0f }, 18.0f, 1.0f, WHITE);
+
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, yesBtn)) {
+                playlistBackends[playlistToDeleteIndex].deletePlaylistFile();
+                playlistBackends.erase(playlistBackends.begin() + playlistToDeleteIndex);
+                playlists.erase(playlists.begin() + playlistToDeleteIndex);
+
+                if (currentPlaylistIndex == playlistToDeleteIndex) {
+                    currentPlaylistIndex = 0;
+                } else if (currentPlaylistIndex > playlistToDeleteIndex) {
+                    currentPlaylistIndex--;
+                }
+
+                deletePlaylistConfirmOpen = false;
+                playlistToDeleteIndex = -1;
+            }
+
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, noBtn)) {
+                deletePlaylistConfirmOpen = false;
+                playlistToDeleteIndex = -1;
+            }
+        }
 
         if (contextMenuOpen)
         {
@@ -464,7 +516,8 @@ int main()
             }
 
             bool isFav = favoriteFlags[contextMenuSongIndex];
-            ContextMenuAction action = DrawSongContextMenu(poppins, contextMenuAnchorRec, isFav, contextMenuShowSubmenu, userPlaylistNames, virtualMouse);
+            bool showRemoveOption = !playlists[currentPlaylistIndex].isDefault;
+            ContextMenuAction action = DrawSongContextMenu(poppins, contextMenuAnchorRec, isFav, contextMenuShowSubmenu, userPlaylistNames, virtualMouse,showRemoveOption);
 
             if (action.result == CTX_TOGGLE_FAVORITE)
             {
@@ -494,6 +547,15 @@ int main()
                     playlistBackends[realPlaylistIdx].addSong(songId);
                 }
             contextMenuOpen = false;
+            }
+            else if (action.result == CTX_REMOVE_FROM_PLAYLIST) {
+                int songId = library.allSongs()[contextMenuSongIndex].id();
+                playlistBackends[currentPlaylistIndex].removeSong(songId);
+
+                auto& indices = playlists[currentPlaylistIndex].songIndices;
+                indices.erase(std::remove(indices.begin(), indices.end(), contextMenuSongIndex), indices.end());
+
+                contextMenuOpen = false;
             }
             else if (action.result == CTX_CLOSED)
             {
