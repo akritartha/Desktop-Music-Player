@@ -39,7 +39,7 @@ void UnloadControlIcons() {
     UnloadTexture(volumeTex);
 }
 
-void DrawControls(bool isPlaying, bool isRepeatOn, bool isShuffleOn) {
+void DrawControls(bool isPlaying, bool isRepeatOn, bool isShuffleOn,bool isMuted) {
     Vector2 origin = {0.0f, 0.0f};
 
     // a. Shuffle icon
@@ -73,7 +73,8 @@ void DrawControls(bool isPlaying, bool isRepeatOn, bool isShuffleOn) {
     // f. Volume icon
     Rectangle volumeSrc = { 0.0f, 0.0f, (float)volumeTex.width, (float)volumeTex.height };
     Rectangle volumeDest = { 1580.0f, 974.0f, 40.0f, 40.0f };
-    DrawTexturePro(volumeTex, volumeSrc, volumeDest, origin, 0.0f, WHITE);
+    Color volumeColor =isMuted? RED: WHITE;
+    DrawTexturePro(volumeTex, volumeSrc, volumeDest, origin, 0.0f, volumeColor);
 }
 
 bool IsPlayButtonClicked(Vector2 virtualMouse) {

@@ -101,6 +101,7 @@ int main()
     bool isRepeatOn = false;
     bool isShuffleOn = false;
     float soundLevel = 0.7f;
+    bool isMuted =false;
     float currentSeconds = 0.0f;
     float totalSeconds = 0.0f;
     float songListScroll = 0.0f;
@@ -287,7 +288,7 @@ int main()
         SongEntry currentSong = songs[currentSongIndex];
 
         soundLevel = UpdateSoundLevel(virtualMouse, soundLevel);
-        SetMusicVolume(currentMusic,soundLevel);
+        SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
         float progressPercent = (totalSeconds > 0) ? (currentSeconds / totalSeconds) : 0.0f;
         float draggedPercent = UpdateSeekPosition(virtualMouse, progressPercent, totalSeconds);
 
@@ -307,13 +308,19 @@ int main()
         {
             soundLevel += 0.05f;
             if (soundLevel > 1.0f) soundLevel = 1.0f;
-            SetMusicVolume(currentMusic,soundLevel);
+            SetMusicVolume(currentMusic, isMuted? 0.0f : soundLevel);
         }
         if (IsKeyPressed(KEY_DOWN))
         {
             soundLevel -= 0.05f;
             if (soundLevel < 0.0f) soundLevel = 0.0f;
-            SetMusicVolume(currentMusic,soundLevel);
+            SetMusicVolume(currentMusic,isMuted?0.0f : soundLevel);
+        }
+        if (IsKeyPressed(KEY_M))
+        {
+            isMuted=!isMuted;
+            if(isMuted) SetMusicVolume(currentMusic,0.0);
+            else SetMusicVolume(currentMusic,soundLevel);
         }
 
         if (!showCreatePlaylistPopup)
@@ -400,7 +407,7 @@ int main()
         std::string currentTimeStr = FormatTime(currentSeconds);
         std::string totalTimeStr = FormatTime(totalSeconds);
         DrawNowPlayingBar(poppins, poppinsBold, currentSong.title.c_str(), currentSong.artist.c_str(), progressPercent, currentTimeStr.c_str(), totalTimeStr.c_str(), soundLevel);
-        DrawControls(isPlaying, isRepeatOn, isShuffleOn);
+        DrawControls(isPlaying, isRepeatOn, isShuffleOn, isMuted);
         DrawNowCard(jotiOne, poppinsBold, poppins, currentSong.title.c_str(), currentSong.artist.c_str());
         bool showAllSongs = playlists[currentPlaylistIndex].isDefault && playlists[currentPlaylistIndex].name == "All Songs";
         rightClickedSongIndex = -1;
