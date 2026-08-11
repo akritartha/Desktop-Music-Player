@@ -14,7 +14,7 @@ struct PlaylistEntry {
     bool isDefault = false;
 };
 
-int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOffset, std::vector<PlaylistEntry>& playlists);
+int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOffset, std::vector<PlaylistEntry>& playlists, int* rightClickedPlaylistIndex);
 bool IsAddPlaylistButtonClicked(Vector2 virtualMouse);
 
 #endif // PLAYLISTBOX_H

@@ -4,14 +4,18 @@
 ContextMenuAction DrawSongContextMenu(Font poppinsFont, Rectangle anchorRowRec, 
                                         bool isFavorite, bool showSubmenu,
                                         const std::vector<std::string>& userPlaylistNames,
-                                        Vector2 virtualMouse) {
+                                        Vector2 virtualMouse,
+                                        bool showRemoveOption) {
     float menuX = anchorRowRec.x + anchorRowRec.width + 5.0f;
     float menuY = anchorRowRec.y;
     float menuWidth = 220.0f;
     float menuHeight = 100.0f;
-    
+    if (showRemoveOption) {
+        menuHeight += 40.0f;
+    }
+
     if (showSubmenu) {
-        menuHeight += userPlaylistNames.size() * 40.0f;
+    menuHeight += userPlaylistNames.size() * 40.0f;
     }
 
     Rectangle menuRec = { menuX, menuY, menuWidth, menuHeight };
@@ -25,8 +29,8 @@ ContextMenuAction DrawSongContextMenu(Font poppinsFont, Rectangle anchorRowRec,
     
     Rectangle favBtnRec = { menuX, menuY, menuWidth, 40.0f };
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, favBtnRec)) {
-        return { CTX_TOGGLE_FAVORITE, -1 };
-    }
+    return { CTX_TOGGLE_FAVORITE, -1 };
+}
 
     // 4. Menu item 2
     DrawTextEx(poppinsFont, "Add to Playlist >", {menuX + 15.0f, menuY + 55.0f}, 16.0f, 1.0f, WHITE);
@@ -36,9 +40,21 @@ ContextMenuAction DrawSongContextMenu(Font poppinsFont, Rectangle anchorRowRec,
         return { CTX_ADD_TO_PLAYLIST_SUBMENU, -1 };
     }
 
+    // 4b. Remove from playlist (only shown when viewing a specific playlist)
+    float nextY = menuY + 80.0f;
+    if (showRemoveOption) {
+        DrawTextEx(poppinsFont, "Remove from Playlist", {menuX + 15.0f, nextY + 12.0f}, 16.0f, 1.0f, WHITE);
+
+        Rectangle removeBtnRec = { menuX, nextY, menuWidth, 40.0f };
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, removeBtnRec)) {
+            return { CTX_REMOVE_FROM_PLAYLIST, -1 };
+        }
+        nextY += 40.0f;
+    }
+
     // 5. Submenu items
     if (showSubmenu) {
-        float subY = menuY + 80.0f;
+        float subY = nextY;
         for (size_t i = 0; i < userPlaylistNames.size(); ++i) {
             DrawTextEx(poppinsFont, userPlaylistNames[i].c_str(), {menuX + 15.0f, subY + 12.0f}, 16.0f, 1.0f, WHITE);
             
