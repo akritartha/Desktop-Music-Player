@@ -34,10 +34,4 @@ void DrawNowCard(Font jotiOneFont, Font jotiOneFontBold, Font poppinsFont, const
     std::string truncArtist = TruncateText(poppinsFont, artistName, 23.0f * FONT_SCALE, 1.0f, 350.0f);
     DrawTextEx(poppinsFont, truncArtist.c_str(), artistPos, 23.0f * FONT_SCALE, 1.0f, WHITE);
 
-    // 7. "+ Add Lyrics" button
-    Rectangle btnRec = { 853.0f, 733.0f, 203.0f, 51.0f };
-    DrawRectangleRoundedLinesEx(btnRec, 0.9f, 8, 3.0f, WHITE);
-    
-    Vector2 btnTextPos = { 880.0f, 745.0f };
-    DrawTextEx(poppinsFont, "+ Add Lyrics", btnTextPos, 27.0f * FONT_SCALE, 1.0f, WHITE);
 }

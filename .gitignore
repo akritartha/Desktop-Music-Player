@@ -3,3 +3,5 @@
 *.execd
 melodex
 musicdb.txt
+*.o
+
