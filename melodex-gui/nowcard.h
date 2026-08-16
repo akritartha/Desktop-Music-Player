@@ -3,6 +3,6 @@
 
 #include "raylib.h"
 
-void DrawNowCard(Font jotiOneFont,Font jotiOneFontBold, Font poppinsFont, const char* songTitle, const char* artistName);
+void DrawNowCard(Font jotiOneFont,Font jotiOneFontBold, Font poppinsFont, const char* songTitle, const char* artistName,bool Isplaying);
 
 #endif // NOWCARD_H

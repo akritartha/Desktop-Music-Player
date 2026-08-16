@@ -451,7 +451,7 @@ int main()
         std::string totalTimeStr = FormatTime(totalSeconds);
         DrawNowPlayingBar(poppins, poppinsBold, currentSong.title.c_str(), currentSong.artist.c_str(), progressPercent, currentTimeStr.c_str(), totalTimeStr.c_str(), soundLevel);
         DrawControls(isPlaying, isRepeatOn, isShuffleOn, isMuted);
-        DrawNowCard(jotiOne, poppinsBold, poppins, currentSong.title.c_str(), currentSong.artist.c_str());
+        DrawNowCard(jotiOne, poppinsBold, poppins, currentSong.title.c_str(), currentSong.artist.c_str(),isPlaying);
         bool showAllSongs = playlists[currentPlaylistIndex].isDefault && playlists[currentPlaylistIndex].name == "All Songs";
         rightClickedSongIndex = -1;
         int clickedSong = DrawSongList(poppins, poppinsBold, &songListScroll, virtualMouse, songs, currentSongIndex, searchText, playlists[currentPlaylistIndex].songIndices, showAllSongs, &rightClickedSongIndex, &rightClickedRowRec);

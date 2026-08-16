@@ -14,6 +14,7 @@ public:
     bool removeSong(int id); // id is primary key
     bool load();
     bool alreadyExists(const std::string &filePath);
+    int scanCommonMusicFolders();
     int scanFolders(const std::string &folderPath);
     const std::vector<Song>& allSongs() const;
     const Song* getSongbyId(int id) const;

@@ -3,6 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <sstream>
+#include <cstdlib>
 #include <algorithm>
 #include <string>
 Library::Library() {}
@@ -130,6 +131,7 @@ int Library::scanFolders(const std::string &folderPath)
     }
     return 0;
 }
+
 const Song *Library::getSongbyId(int id) const
 {
     for (const auto &s : m_songs)
