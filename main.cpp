@@ -9,6 +9,7 @@
 #include "songlist.h"
 #include "playlistbox.h"
 #include "createplaylistpopup.h"
+#include "addfolderpopup.h"
 #include "songcontextmenu.h"
 #include "textutils.h"
 #include <vector>
@@ -16,6 +17,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
+#include <fstream>
 #include "library.h"
 #include "song.h"
 #include "dbplaylist.h"
@@ -122,6 +124,23 @@ int main()
     Library library("melodex-gui/musicdb.txt");
     library.load();
     library.scanFolders("melodex-gui/songs");
+
+    const std::string extraFoldersConfigPath = "melodex-gui/scanned_folders.txt";
+    std::vector<std::string> extraScannedFolders;
+    {
+        std::ifstream cfgIn(extraFoldersConfigPath);
+        if (cfgIn.is_open())
+        {
+            std::string line;
+            while (std::getline(cfgIn, line))
+            {
+                if (line.empty())
+                    continue;
+                extraScannedFolders.push_back(line);
+                library.scanFolders(line);
+            }
+        }
+    }
 
     std::vector<SongEntry> songs;
     for (const Song &s : library.allSongs())
@@ -247,6 +266,10 @@ int main()
     bool nameFieldActive = false;
     bool coverFieldActive = false;
 
+    bool showAddFolderPopup = false;
+    std::string newFolderPath = "";
+    bool folderFieldActive = false;
+
     while (!WindowShouldClose())
     {
         float scale = fminf((float)GetScreenWidth() / 1920.0f,
@@ -284,6 +307,54 @@ int main()
                 showCreatePlaylistPopup = false;
                 newPlaylistName = "";
                 newPlaylistCoverPath = "";
+            }
+        }
+
+        if (showAddFolderPopup)
+        {
+            AddFolderResult folderResult = GetAddFolderPopupResult(virtualMouse);
+            if (folderResult == ADDFOLDER_CANCELLED)
+            {
+                showAddFolderPopup = false;
+                newFolderPath = "";
+            }
+            else if (folderResult == ADDFOLDER_ADDED)
+            {
+                namespace fs = std::filesystem;
+                if (!newFolderPath.empty() && fs::exists(newFolderPath) && fs::is_directory(newFolderPath))
+                {
+                    library.scanFolders(newFolderPath);
+
+                    // Rebuild the UI-facing songs list from the library
+                    songs.clear();
+                    for (const Song &s : library.allSongs())
+                    {
+                        songs.push_back(ToSongEntry(s));
+                    }
+                    favoriteFlags.resize(songs.size(), false);
+
+                    // Remember this folder for next launch, avoiding duplicates
+                    bool alreadySaved = false;
+                    for (const auto &f : extraScannedFolders)
+                    {
+                        if (f == newFolderPath)
+                        {
+                            alreadySaved = true;
+                            break;
+                        }
+                    }
+                    if (!alreadySaved)
+                    {
+                        extraScannedFolders.push_back(newFolderPath);
+                        std::ofstream cfgOut(extraFoldersConfigPath, std::ios::app);
+                        if (cfgOut.is_open())
+                        {
+                            cfgOut << newFolderPath << "\n";
+                        }
+                    }
+                }
+                showAddFolderPopup = false;
+                newFolderPath = "";
             }
         }
 
@@ -345,7 +416,7 @@ int main()
                 soundLevel = 0.0f;
             SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
         }
-        if (IsKeyPressed(KEY_M) || (!showCreatePlaylistPopup && IsVolumeButtonClicked(virtualMouse)))
+        if (IsKeyPressed(KEY_M) || (!showCreatePlaylistPopup && !showAddFolderPopup && IsVolumeButtonClicked(virtualMouse)))
         {
             isMuted = !isMuted;
             if (isMuted)
@@ -354,7 +425,7 @@ int main()
                 SetMusicVolume(currentMusic, soundLevel);
         }
 
-        if (!showCreatePlaylistPopup)
+        if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
             if (IsPlayButtonClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
             {
@@ -369,7 +440,7 @@ int main()
                 }
             }
         }
-        if (!showCreatePlaylistPopup)
+        if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
             if (IsRepeatButtonClicked(virtualMouse))
             {
@@ -377,7 +448,7 @@ int main()
                 isRepeatOn = !isRepeatOn;
             }
         }
-        if (!showCreatePlaylistPopup)
+        if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
             if (IsShuffleButtonClicked(virtualMouse))
             {
@@ -465,7 +536,7 @@ int main()
             rightClickedSongIndex = -1;
         }
 
-        if (!showCreatePlaylistPopup)
+        if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
             if (clickedSong != -1 && clickedSong != currentSongIndex)
             {
@@ -500,11 +571,15 @@ int main()
             rightClickedPlaylistIndex = -1;
         }
 
-        if (!showCreatePlaylistPopup)
+        if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
             if (IsAddPlaylistButtonClicked(virtualMouse))
             {
                 showCreatePlaylistPopup = true;
+            }
+            if (IsAddFolderButtonClicked(virtualMouse))
+            {
+                showAddFolderPopup = true;
             }
             if (clickedPlaylist != -1)
             {
@@ -517,6 +592,11 @@ int main()
             DrawCreatePlaylistPopup(poppins, poppinsBold, newPlaylistName,
                                     newPlaylistCoverPath, &nameFieldActive,
                                     &coverFieldActive, virtualMouse);
+        }
+        if (showAddFolderPopup)
+        {
+            DrawAddFolderPopup(poppins, poppinsBold, newFolderPath,
+                                &folderFieldActive, virtualMouse);
         }
         if (deletePlaylistConfirmOpen && playlistToDeleteIndex != -1)
         {

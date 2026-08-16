@@ -18,7 +18,10 @@ int DrawPlaylistBox(Font poppinsFontBold, Vector2 virtualMouse, float* scrollOff
     Vector2 btnTextPos = { 1630.0f, 160.0f };
     DrawTextEx(poppinsFontBold, "+ Add Playlist", btnTextPos, 28.0f * FONT_SCALE, 1.0f, WHITE);
 
-    float listAreaTop = 230.0f;
+    Vector2 folderBtnTextPos = { 1630.0f, 195.0f };
+    DrawTextEx(poppinsFontBold, "+ Add Folder", folderBtnTextPos, 24.0f * FONT_SCALE, 1.0f, WHITE);
+
+    float listAreaTop = 250.0f;
     float listAreaBottom = rightPanelRec.y + rightPanelRec.height;
     bool mouseOverPanel = CheckCollisionPointRec(virtualMouse, rightPanelRec);
 
@@ -96,5 +99,14 @@ bool IsAddPlaylistButtonClicked(Vector2 virtualMouse) {
         return true;
     }
     
+    return false;
+}
+
+bool IsAddFolderButtonClicked(Vector2 virtualMouse) {
+    Rectangle btnRec = { 1620.0f, 190.0f, 190.0f, 35.0f };
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, btnRec)) {
+        return true;
+    }
+
     return false;
 }
