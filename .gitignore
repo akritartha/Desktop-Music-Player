@@ -1,4 +1,5 @@
 .vscode
 *.exe
 *.execd
-melodex-gui/melodex
+melodex
+musicdb.txt

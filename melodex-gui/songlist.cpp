@@ -8,7 +8,7 @@
 static Texture2D magnifierTexture;
 
 void LoadSongListAssets() {
-    magnifierTexture = LoadTexture("icons/magnifier.png");
+    magnifierTexture = LoadTexture("melodex-gui/icons/magnifier.png");
     SetTextureFilter(magnifierTexture, TEXTURE_FILTER_BILINEAR);
 }
 

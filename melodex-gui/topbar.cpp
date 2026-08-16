@@ -6,7 +6,7 @@
 static Texture2D logoTexture;
 
 void LoadTopBarAssets() {
-    logoTexture = LoadTexture("logo.png");
+    logoTexture = LoadTexture("melodex-gui/logo.png");
     SetTextureFilter(logoTexture, TEXTURE_FILTER_BILINEAR);
 }
 

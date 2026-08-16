@@ -16,9 +16,9 @@
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
-#include "../Database/library.h"
-#include "../Database/song.h"
-#include "../Database/dbplaylist.h"
+#include "library.h"
+#include "song.h"
+#include "dbplaylist.h"
 
 SongEntry ToSongEntry(const Song &s)
 {
@@ -91,14 +91,14 @@ int main()
     RenderTexture2D targetTexture = LoadRenderTexture(1920, 1080);
     SetTextureFilter(targetTexture.texture, TEXTURE_FILTER_BILINEAR);
 
-    Font jotiOne = LoadFontEx("assets/Joti_One/JotiOne-Regular.ttf", 64, 0, 0);
+    Font jotiOne = LoadFontEx("melodex-gui/assets/Joti_One/JotiOne-Regular.ttf", 64, 0, 0);
     SetTextureFilter(jotiOne.texture, TEXTURE_FILTER_BILINEAR);
     GenTextureMipmaps(&jotiOne.texture);
-    Font poppins = LoadFontEx("assets/Poppins/Poppins-Regular.ttf", 64, 0, 0);
+    Font poppins = LoadFontEx("melodex-gui/assets/Poppins/Poppins-Regular.ttf", 64, 0, 0);
     SetTextureFilter(poppins.texture, TEXTURE_FILTER_BILINEAR);
     GenTextureMipmaps(&poppins.texture);
 
-    Font poppinsBold = LoadFontEx("assets/Poppins/Poppins-Bold.ttf", 64, 0, 0);
+    Font poppinsBold = LoadFontEx("melodex-gui/assets/Poppins/Poppins-Bold.ttf", 64, 0, 0);
     SetTextureFilter(poppinsBold.texture, TEXTURE_FILTER_BILINEAR);
     GenTextureMipmaps(&poppinsBold.texture);
 
@@ -119,9 +119,9 @@ int main()
     Music currentMusic = {0};
     int loadedSongIndex = -1;
 
-    Library library("musicdb.txt");
+    Library library("melodex-gui/musicdb.txt");
     library.load();
-    library.scanFolders("songs");
+    library.scanFolders("melodex-gui/songs");
 
     std::vector<SongEntry> songs;
     for (const Song &s : library.allSongs())
@@ -166,7 +166,7 @@ int main()
     std::vector<Playlist> playlistBackends;
     for (const auto &p : playlists)
     {
-        std::string filename = "playlists/" + p.name + ".txt";
+        std::string filename = "melodex-gui/playlists/" + p.name + ".txt";
         Playlist pl(p.name, filename);
         pl.load();
         playlistBackends.push_back(pl);
@@ -187,9 +187,9 @@ int main()
 
     // Load any extra playlists created by the user that aren't in the hardcoded list
     namespace fs = std::filesystem;
-    if (fs::exists("playlists"))
+    if (fs::exists("melodex-gui/playlists"))
     {
-        for (const auto &entry : fs::directory_iterator("playlists"))
+        for (const auto &entry : fs::directory_iterator("melodex-gui/playlists"))
         {
             if (entry.path().extension() == ".txt")
             {
@@ -277,7 +277,7 @@ int main()
                 if (!newPlaylistName.empty())
                 {
                     playlists.push_back({newPlaylistName, newPlaylistCoverPath});
-                    std::string filename = "playlists/" + newPlaylistName + ".txt";
+                    std::string filename = "melodex-gui/playlists/" + newPlaylistName + ".txt";
                     Playlist newBackend(newPlaylistName, filename);
                     playlistBackends.push_back(newBackend);
                 }

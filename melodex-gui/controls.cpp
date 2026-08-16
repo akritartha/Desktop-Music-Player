@@ -12,28 +12,28 @@ static Texture2D volumeTex;
 static Texture2D muteTex;
 
 void LoadControlIcons() {
-    shuffleTex = LoadTexture("icons/shuffle.png");
+    shuffleTex = LoadTexture("melodex-gui/icons/shuffle.png");
     SetTextureFilter(shuffleTex, TEXTURE_FILTER_BILINEAR);
     
-    skipTex = LoadTexture("icons/skip.png");
+    skipTex = LoadTexture("melodex-gui/icons/skip.png");
     SetTextureFilter(skipTex, TEXTURE_FILTER_BILINEAR);
     
-    playTex = LoadTexture("icons/play.png");
+    playTex = LoadTexture("melodex-gui/icons/play.png");
     SetTextureFilter(playTex, TEXTURE_FILTER_BILINEAR);
     
-    pauseTex = LoadTexture("icons/pause.png");
+    pauseTex = LoadTexture("melodex-gui/icons/pause.png");
     SetTextureFilter(pauseTex, TEXTURE_FILTER_BILINEAR);
     
-    repeatTex = LoadTexture("icons/repeat.png");
+    repeatTex = LoadTexture("melodex-gui/icons/repeat.png");
     SetTextureFilter(repeatTex, TEXTURE_FILTER_BILINEAR);
     
-    Image volumeImg = LoadImage("icons/volume.png");
+    Image volumeImg = LoadImage("melodex-gui/icons/volume.png");
     ImageColorReplace(&volumeImg, BLACK, WHITE);
     volumeTex = LoadTextureFromImage(volumeImg);
     UnloadImage(volumeImg);
     SetTextureFilter(volumeTex, TEXTURE_FILTER_BILINEAR);
 
-    Image muteImg = LoadImage("icons/mute.png");
+    Image muteImg = LoadImage("melodex-gui/icons/mute.png");
     ImageColorReplace(&muteImg, BLACK, WHITE);
     muteTex = LoadTextureFromImage(muteImg);
     UnloadImage(muteImg);
