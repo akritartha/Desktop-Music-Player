@@ -38,6 +38,13 @@ void DrawAddFolderPopup(Font poppinsFont, Font poppinsFontBold,
         if (IsKeyPressed(KEY_BACKSPACE) && !folderPathText.empty()) {
             folderPathText.pop_back();
         }
+        if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_V)) {
+        const char* clip = GetClipboardText();
+        if (clip != nullptr) {
+            folderPathText += clip;
+            if (folderPathText.length() > 120) folderPathText = folderPathText.substr(0, 120);
+        }
+    }
     }
 
     if (folderPathText.empty()) {

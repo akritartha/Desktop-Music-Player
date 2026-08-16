@@ -30,19 +30,26 @@ void DrawCreatePlaylistPopup(Font poppinsFont, Font poppinsFontBold,
     }
 
     if (*nameFieldActive) {
-        DrawRectangleRoundedLinesEx(nameBoxRec, 0.2f, 8, 2, WHITE);
-        
-        int key = GetCharPressed();
-        while (key > 0) {
-            if (key >= 32 && key <= 125 && nameText.length() < 60) {
-                nameText += (char)key;
-            }
-            key = GetCharPressed();
+    DrawRectangleRoundedLinesEx(nameBoxRec, 0.2f, 8, 2, WHITE);
+    
+    int key = GetCharPressed();
+    while (key > 0) {
+        if (key >= 32 && key <= 125 && nameText.length() < 60) {
+            nameText += (char)key;
         }
-        if (IsKeyPressed(KEY_BACKSPACE) && !nameText.empty()) {
-            nameText.pop_back();
+        key = GetCharPressed();
+    }
+    if (IsKeyPressed(KEY_BACKSPACE) && !nameText.empty()) {
+        nameText.pop_back();
+    }
+    if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_V)) {
+        const char* clip = GetClipboardText();
+        if (clip != nullptr) {
+            nameText += clip;
+            if (nameText.length() > 60) nameText = nameText.substr(0, 60);
         }
     }
+}
     
     DrawTextEx(poppinsFont, nameText.c_str(), {715, 485}, 20, 1.0f, WHITE);
 
@@ -60,21 +67,27 @@ void DrawCreatePlaylistPopup(Font poppinsFont, Font poppinsFontBold,
         }
     }
 
-    if (*coverFieldActive) {
-        DrawRectangleRoundedLinesEx(coverBoxRec, 0.2f, 8, 2, WHITE);
-        
-        int key = GetCharPressed();
-        while (key > 0) {
-            if (key >= 32 && key <= 125 && coverPathText.length() < 120) {
-                coverPathText += (char)key;
-            }
-            key = GetCharPressed();
+   if (*coverFieldActive) {
+    DrawRectangleRoundedLinesEx(coverBoxRec, 0.2f, 8, 2, WHITE);
+    
+    int key = GetCharPressed();
+    while (key > 0) {
+        if (key >= 32 && key <= 125 && coverPathText.length() < 120) {
+            coverPathText += (char)key;
         }
-        if (IsKeyPressed(KEY_BACKSPACE) && !coverPathText.empty()) {
-            coverPathText.pop_back();
+        key = GetCharPressed();
+    }
+    if (IsKeyPressed(KEY_BACKSPACE) && !coverPathText.empty()) {
+        coverPathText.pop_back();
+    }
+    if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_V)) {
+        const char* clip = GetClipboardText();
+        if (clip != nullptr) {
+            coverPathText += clip;
+            if (coverPathText.length() > 120) coverPathText = coverPathText.substr(0, 120);
         }
     }
-
+}
     if (coverPathText.empty()) {
         DrawTextEx(poppinsFont, "e.g. /home/user/Pictures/cover.jpg", {715, 590}, 20, 1.0f, {255, 255, 255, 120});
     } else {
