@@ -64,8 +64,8 @@ int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Ve
         if (searchText.empty()) {
             filteredIndices.push_back((int)i);
         } else {
-            std::string titleLower = songs[i].title;
-            std::string artistLower = songs[i].artist;
+            std::string titleLower = songs[i].title();
+            std::string artistLower = songs[i].artist();
             std::string searchLower = searchText;
             for (auto& c : titleLower) c = tolower(c);
             for (auto& c : artistLower) c = tolower(c);
@@ -116,8 +116,8 @@ int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Ve
             DrawRectangleGradientEx(thumbRec, leftColor, leftColor, rightColor, rightColor);
 
             // Thumbnail fallback
-            if (!song.title.empty()) {
-                std::string fallbackStr(1, (char)toupper(song.title[0]));
+            if (!song.title().empty()) {
+                std::string fallbackStr(1, (char)toupper(song.title()[0]));
                 Vector2 textSize = MeasureTextEx(poppinsFontBold, fallbackStr.c_str(), 30.0f * FONT_SCALE, 1.0f);
                 Vector2 textPos = {
                     thumbRec.x + (thumbRec.width - textSize.x) / 2.0f,
@@ -128,12 +128,12 @@ int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Ve
 
             // Title
             Vector2 titlePos = { 199.0f, rowY + 25.0f };
-            std::string titleStr = TruncateText(poppinsFontBold, song.title, 25.0f * FONT_SCALE, 1.0f, 400.0f);
+            std::string titleStr = TruncateText(poppinsFontBold, song.title(), 25.0f * FONT_SCALE, 1.0f, 400.0f);
             DrawTextEx(poppinsFontBold, titleStr.c_str(), titlePos, 25.0f * FONT_SCALE, 1.0f, WHITE);
 
             // Artist
             Vector2 artistPos = { 199.0f, rowY + 55.0f };
-            std::string artistStr = TruncateText(poppinsFont, song.artist, 20.0f * FONT_SCALE, 1.0f, 400.0f);
+            std::string artistStr = TruncateText(poppinsFont, song.artist(), 20.0f * FONT_SCALE, 1.0f, 400.0f);
             DrawTextEx(poppinsFont, artistStr.c_str(), artistPos, 20.0f * FONT_SCALE, 1.0f, WHITE);
         }
     }
@@ -141,3 +141,16 @@ int DrawSongList(Font poppinsFont, Font poppinsFontBold, float* scrollOffset, Ve
     EndScissorMode();
     return clickedIndex;
 }
+
+SongEntry::SongEntry() : m_title(""), m_artist(""), m_thumbnailPath("") {}
+
+SongEntry::SongEntry(std::string title, std::string artist, std::string thumbnailPath)
+    : m_title(title), m_artist(artist), m_thumbnailPath(thumbnailPath) {}
+
+std::string SongEntry::title() const { return m_title; }
+std::string SongEntry::artist() const { return m_artist; }
+std::string SongEntry::thumbnailPath() const { return m_thumbnailPath; }
+
+void SongEntry::setTitle(std::string title) { m_title = title; }
+void SongEntry::setArtist(std::string artist) { m_artist = artist; }
+void SongEntry::setThumbnailPath(std::string path) { m_thumbnailPath = path; }
