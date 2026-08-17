@@ -416,7 +416,7 @@ int main()
                 soundLevel = 0.0f;
             SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
         }
-        if (IsKeyPressed(KEY_M) || (!showCreatePlaylistPopup && !showAddFolderPopup && IsVolumeButtonClicked(virtualMouse)))
+        if (IsKeyPressed(KEY_M) || (!showCreatePlaylistPopup && !showAddFolderPopup && volumeBtn->IsClicked(virtualMouse)))
         {
             isMuted = !isMuted;
             if (isMuted)
@@ -427,7 +427,7 @@ int main()
 
         if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
-            if (IsPlayButtonClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
+            if (playBtn->IsClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
             {
                 isPlaying = !isPlaying;
                 if (isPlaying)
@@ -442,7 +442,7 @@ int main()
         }
         if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
-            if (IsRepeatButtonClicked(virtualMouse))
+            if (repeatBtn->IsClicked(virtualMouse))
             {
                 (isShuffleOn) ? (isShuffleOn = !isShuffleOn) : true;
                 isRepeatOn = !isRepeatOn;
@@ -450,7 +450,7 @@ int main()
         }
         if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
-            if (IsShuffleButtonClicked(virtualMouse))
+            if (shuffleBtn->IsClicked(virtualMouse))
             {
                 (isRepeatOn) ? (isRepeatOn = !isRepeatOn) : true;
                 isShuffleOn = !isShuffleOn;
@@ -546,14 +546,14 @@ int main()
                     PlayMusicStream(currentMusic);
             }
 
-            if (IsNextButtonClicked(virtualMouse))
+            if (nextBtn->IsClicked(virtualMouse))
             {
                 AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
                 LoadSongAudio(currentSongIndex);
                 if (isPlaying)
                     PlayMusicStream(currentMusic);
             }
-            if (IsPreviousButtonClicked(virtualMouse))
+            if (prevBtn->IsClicked(virtualMouse))
             {
                 AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), false, ADV_PREV);
                 LoadSongAudio(currentSongIndex);
