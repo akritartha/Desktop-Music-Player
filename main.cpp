@@ -10,6 +10,7 @@
 #include "playlistbox.h"
 #include "createplaylistpopup.h"
 #include "addfolderpopup.h"
+#include "confirmdialog.h"
 #include "songcontextmenu.h"
 #include "textutils.h"
 #include <vector>
@@ -599,21 +600,13 @@ int main()
         if (deletePlaylistConfirmOpen && playlistToDeleteIndex != -1)
         {
             Rectangle popupRec = {760.0f, 460.0f, 400.0f, 160.0f};
-            DrawRectangleRounded(popupRec, 0.1f, 8, (Color){0, 31, 62, 240});
-
             std::string msg = "Delete \"" + playlists[playlistToDeleteIndex].name() + "\"?";
-            DrawTextEx(poppins, msg.c_str(), {popupRec.x + 20.0f, popupRec.y + 20.0f}, 20.0f, 1.0f, WHITE);
+            
+            ConfirmDialog dialog(popupRec, poppins, poppinsBold, msg, virtualMouse);
+            dialog.Draw();
 
-            Rectangle yesBtn = {popupRec.x + 40.0f, popupRec.y + 90.0f, 140.0f, 45.0f};
-            Rectangle noBtn = {popupRec.x + 220.0f, popupRec.y + 90.0f, 140.0f, 45.0f};
-
-            DrawRectangleRounded(yesBtn, 0.2f, 8, (Color){0, 115, 230, 255});
-            DrawTextEx(poppins, "Delete", {yesBtn.x + 35.0f, yesBtn.y + 12.0f}, 18.0f, 1.0f, WHITE);
-
-            DrawRectangleRounded(noBtn, 0.2f, 8, (Color){60, 90, 130, 255});
-            DrawTextEx(poppins, "Cancel", {noBtn.x + 35.0f, noBtn.y + 12.0f}, 18.0f, 1.0f, WHITE);
-
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, yesBtn))
+            ConfirmResult res = dialog.GetResult();
+            if (res == CONFIRM_YES)
             {
                 playlistBackends[playlistToDeleteIndex].deletePlaylistFile();
                 playlistBackends.erase(playlistBackends.begin() + playlistToDeleteIndex);
@@ -631,8 +624,7 @@ int main()
                 deletePlaylistConfirmOpen = false;
                 playlistToDeleteIndex = -1;
             }
-
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, noBtn))
+            else if (res == CONFIRM_NO)
             {
                 deletePlaylistConfirmOpen = false;
                 playlistToDeleteIndex = -1;

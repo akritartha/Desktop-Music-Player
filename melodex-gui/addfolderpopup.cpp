@@ -1,24 +1,19 @@
 #include "addfolderpopup.h"
 #include "raylib.h"
 
-void DrawAddFolderPopup(Font poppinsFont, Font poppinsFontBold,
-                         std::string& folderPathText, bool* fieldActive,
-                         Vector2 virtualMouse) {
-    // Semi-transparent black overlay
-    DrawRectangle(0, 0, 1920, 1080, {0, 0, 0, 150});
+AddFolderPopup::AddFolderPopup(Rectangle b, Font poppins, Font poppinsBold, std::string* path, bool* active, Vector2 mouse)
+    : Popup(b), poppinsFont(poppins), poppinsFontBold(poppinsBold), folderPathText(path), fieldActive(active), virtualMouse(mouse) {}
 
-    // Centered popup panel
-    Rectangle popupRec = { 660, 400, 600, 280 };
-    DrawRectangleRounded(popupRec, 0.08f, 8, {40, 60, 90, 255});
+AddFolderPopup::AddFolderPopup(Rectangle b)
+    : Popup(b), folderPathText(nullptr), fieldActive(nullptr) {}
 
-    // Title
-    DrawTextEx(poppinsFontBold, "Add Music Folder", {700, 430}, 32, 1.0f, WHITE);
+void AddFolderPopup::Draw() {
+    DrawOverlay();
+    DrawRectangleRounded(bounds, 0.08f, 8, {40, 60, 90, 255});
+    DrawTextEx(poppinsFontBold, "Add Music Folder", {bounds.x + 40, bounds.y + 30}, 32, 1.0f, WHITE);
+    DrawTextEx(poppinsFont, "Folder Path", {bounds.x + 40, bounds.y + 90}, 18, 1.0f, WHITE);
 
-    // Folder path label
-    DrawTextEx(poppinsFont, "Folder Path", {700, 490}, 18, 1.0f, WHITE);
-
-    // Folder path input box
-    Rectangle pathBoxRec = { 700, 520, 520, 50 };
+    Rectangle pathBoxRec = { bounds.x + 40, bounds.y + 120, 520, 50 };
     DrawRectangleRounded(pathBoxRec, 0.2f, 8, {255, 255, 255, 40});
 
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
@@ -30,51 +25,61 @@ void DrawAddFolderPopup(Font poppinsFont, Font poppinsFontBold,
 
         int key = GetCharPressed();
         while (key > 0) {
-            if (key >= 32 && key <= 125 && folderPathText.length() < 200) {
-                folderPathText += (char)key;
+            if (key >= 32 && key <= 125 && folderPathText->length() < 200) {
+                *folderPathText += (char)key;
             }
             key = GetCharPressed();
         }
-        if (IsKeyPressed(KEY_BACKSPACE) && !folderPathText.empty()) {
-            folderPathText.pop_back();
+        if (IsKeyPressed(KEY_BACKSPACE) && !folderPathText->empty()) {
+            folderPathText->pop_back();
         }
         if ((IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL)) && IsKeyPressed(KEY_V)) {
-        const char* clip = GetClipboardText();
-        if (clip != nullptr) {
-            folderPathText += clip;
-            if (folderPathText.length() > 120) folderPathText = folderPathText.substr(0, 120);
+            const char* clip = GetClipboardText();
+            if (clip != nullptr) {
+                *folderPathText += clip;
+                if (folderPathText->length() > 120) *folderPathText = folderPathText->substr(0, 120);
+            }
         }
     }
-    }
 
-    if (folderPathText.empty()) {
-        DrawTextEx(poppinsFont, "e.g. /home/user/Music/MoreSongs", {715, 535}, 20, 1.0f, {255, 255, 255, 120});
+    if (folderPathText->empty()) {
+        DrawTextEx(poppinsFont, "e.g. /home/user/Music/MoreSongs", {bounds.x + 55, bounds.y + 135}, 20, 1.0f, {255, 255, 255, 120});
     } else {
-        DrawTextEx(poppinsFont, folderPathText.c_str(), {715, 535}, 20, 1.0f, WHITE);
+        DrawTextEx(poppinsFont, folderPathText->c_str(), {bounds.x + 55, bounds.y + 135}, 20, 1.0f, WHITE);
     }
 
-    // Buttons
-    Rectangle cancelBtnRec = { 700, 600, 240, 60 };
+    Rectangle cancelBtnRec = { bounds.x + 40, bounds.y + 200, 240, 60 };
     DrawRectangleRoundedLinesEx(cancelBtnRec, 0.3f, 8, 2, WHITE);
-    DrawTextEx(poppinsFontBold, "Cancel", {780, 618}, 22, 1.0f, WHITE);
+    DrawTextEx(poppinsFontBold, "Cancel", {bounds.x + 120, bounds.y + 218}, 22, 1.0f, WHITE);
 
-    Rectangle addBtnRec = { 980, 600, 240, 60 };
+    Rectangle addBtnRec = { bounds.x + 320, bounds.y + 200, 240, 60 };
     DrawRectangleRounded(addBtnRec, 0.3f, 8, WHITE);
-    DrawTextEx(poppinsFontBold, "Scan Folder", {1020, 618}, 22, 1.0f, {20, 40, 70, 255});
+    DrawTextEx(poppinsFontBold, "Scan Folder", {bounds.x + 360, bounds.y + 218}, 22, 1.0f, {20, 40, 70, 255});
 }
 
-AddFolderResult GetAddFolderPopupResult(Vector2 virtualMouse) {
-    Rectangle cancelBtnRec = { 700, 600, 240, 60 };
-    Rectangle addBtnRec = { 980, 600, 240, 60 };
+AddFolderResult AddFolderPopup::GetResult(Vector2 mouse) {
+    Rectangle cancelBtnRec = { bounds.x + 40, bounds.y + 200, 240, 60 };
+    Rectangle addBtnRec = { bounds.x + 320, bounds.y + 200, 240, 60 };
 
     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        if (CheckCollisionPointRec(virtualMouse, cancelBtnRec)) {
+        if (CheckCollisionPointRec(mouse, cancelBtnRec)) {
             return ADDFOLDER_CANCELLED;
         }
-        if (CheckCollisionPointRec(virtualMouse, addBtnRec)) {
+        if (CheckCollisionPointRec(mouse, addBtnRec)) {
             return ADDFOLDER_ADDED;
         }
     }
-
     return ADDFOLDER_NONE;
+}
+
+void DrawAddFolderPopup(Font poppinsFont, Font poppinsFontBold,
+                         std::string& folderPathText, bool* fieldActive,
+                         Vector2 virtualMouse) {
+    AddFolderPopup popup({660, 400, 600, 280}, poppinsFont, poppinsFontBold, &folderPathText, fieldActive, virtualMouse);
+    popup.Draw();
+}
+
+AddFolderResult GetAddFolderPopupResult(Vector2 virtualMouse) {
+    AddFolderPopup popup({660, 400, 600, 280});
+    return popup.GetResult(virtualMouse);
 }
