@@ -53,8 +53,4 @@ melodex.exe
 - `melodex-gui/`: Contains the frontend UI layer, utilizing a custom OOP component hierarchy (menus, buttons, sliders, panels) built on raylib.
 - `Database/`: Contains the backend database and audio library logic, managing track indexing, file parsing, and playlists.
 
-## Known Limitations / Not Yet Implemented
-- The **Add Lyrics** button is non-functional.
-- Clicking the **album card** currently does nothing.
-- The user **avatar icon** has not been built/integrated.
-- No **Flathub / .deb** packaging configured for deployment yet.
+
