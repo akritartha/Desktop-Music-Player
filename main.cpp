@@ -10,6 +10,7 @@
 #include "playlistbox.h"
 #include "createplaylistpopup.h"
 #include "addfolderpopup.h"
+#include "confirmdialog.h"
 #include "songcontextmenu.h"
 #include "textutils.h"
 #include <vector>
@@ -24,7 +25,7 @@
 
 SongEntry ToSongEntry(const Song &s)
 {
-    return SongEntry{s.title(), s.artist(), ""};
+    return SongEntry(s.title(), s.artist(), "");
 }
 
 int FindSongIndexById(const std::vector<Song> &allSongs, int id)
@@ -39,7 +40,7 @@ int FindSongIndexById(const std::vector<Song> &allSongs, int id)
 
 std::vector<int> GetActiveIndices(const std::vector<PlaylistEntry> &playlists, int playlistIdx, int totalSongs)
 {
-    bool isAllSongs = playlists[playlistIdx].isDefault && playlists[playlistIdx].name == "All Songs";
+    bool isAllSongs = playlists[playlistIdx].isDefault() && playlists[playlistIdx].name() == "All Songs";
     if (isAllSongs)
     {
         std::vector<int> all;
@@ -47,7 +48,7 @@ std::vector<int> GetActiveIndices(const std::vector<PlaylistEntry> &playlists, i
             all.push_back(i);
         return all;
     }
-    return playlists[playlistIdx].songIndices;
+    return playlists[playlistIdx].songIndices();
 }
 
 enum AdvanceDirection
@@ -179,14 +180,14 @@ int main()
     bool searchBoxActive = false;
 
     std::vector<PlaylistEntry> playlists = {
-        {"All Songs", "", {}, false, {}, true},
-        {"Favorites", "", {}, false, {}, true}};
+        PlaylistEntry("All Songs", "", true),
+        PlaylistEntry("Favorites", "", true)};
 
     std::vector<Playlist> playlistBackends;
     for (const auto &p : playlists)
     {
-        std::string filename = "melodex-gui/playlists/" + p.name + ".txt";
-        Playlist pl(p.name, filename);
+        std::string filename = "melodex-gui/playlists/" + p.name() + ".txt";
+        Playlist pl(p.name(), filename);
         pl.load();
         playlistBackends.push_back(pl);
     }
@@ -199,7 +200,7 @@ int main()
             int idx = FindSongIndexById(library.allSongs(), songId);
             if (idx != -1)
             {
-                playlists[i].songIndices.push_back(idx);
+                playlists[i].addSongIndex(idx);
             }
         }
     }
@@ -217,7 +218,7 @@ int main()
                 bool alreadyLoaded = false;
                 for (const auto &p : playlists)
                 {
-                    if (p.name == name)
+                    if (p.name() == name)
                     {
                         alreadyLoaded = true;
                         break;
@@ -229,14 +230,12 @@ int main()
                     Playlist pl(name, entry.path().string());
                     pl.load();
 
-                    PlaylistEntry newEntry;
-                    newEntry.name = name;
-                    newEntry.isDefault = false;
+                    PlaylistEntry newEntry(name, "", false);
                     for (int songId : pl.songIds())
                     {
                         int idx = FindSongIndexById(library.allSongs(), songId);
                         if (idx != -1)
-                            newEntry.songIndices.push_back(idx);
+                            newEntry.addSongIndex(idx);
                     }
 
                     playlists.push_back(newEntry);
@@ -299,7 +298,7 @@ int main()
             {
                 if (!newPlaylistName.empty())
                 {
-                    playlists.push_back({newPlaylistName, newPlaylistCoverPath});
+                    playlists.push_back(PlaylistEntry(newPlaylistName, newPlaylistCoverPath));
                     std::string filename = "melodex-gui/playlists/" + newPlaylistName + ".txt";
                     Playlist newBackend(newPlaylistName, filename);
                     playlistBackends.push_back(newBackend);
@@ -416,7 +415,7 @@ int main()
                 soundLevel = 0.0f;
             SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
         }
-        if (IsKeyPressed(KEY_M) || (!showCreatePlaylistPopup && !showAddFolderPopup && IsVolumeButtonClicked(virtualMouse)))
+        if (IsKeyPressed(KEY_M) || (!showCreatePlaylistPopup && !showAddFolderPopup && volumeBtn->IsClicked(virtualMouse)))
         {
             isMuted = !isMuted;
             if (isMuted)
@@ -427,7 +426,7 @@ int main()
 
         if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
-            if (IsPlayButtonClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
+            if (playBtn->IsClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
             {
                 isPlaying = !isPlaying;
                 if (isPlaying)
@@ -442,7 +441,7 @@ int main()
         }
         if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
-            if (IsRepeatButtonClicked(virtualMouse))
+            if (repeatBtn->IsClicked(virtualMouse))
             {
                 (isShuffleOn) ? (isShuffleOn = !isShuffleOn) : true;
                 isRepeatOn = !isRepeatOn;
@@ -450,7 +449,7 @@ int main()
         }
         if (!showCreatePlaylistPopup && !showAddFolderPopup)
         {
-            if (IsShuffleButtonClicked(virtualMouse))
+            if (shuffleBtn->IsClicked(virtualMouse))
             {
                 (isRepeatOn) ? (isRepeatOn = !isRepeatOn) : true;
                 isShuffleOn = !isShuffleOn;
@@ -520,12 +519,12 @@ int main()
         DrawTopBar(jotiOne);
         std::string currentTimeStr = FormatTime(currentSeconds);
         std::string totalTimeStr = FormatTime(totalSeconds);
-        DrawNowPlayingBar(poppins, poppinsBold, currentSong.title.c_str(), currentSong.artist.c_str(), progressPercent, currentTimeStr.c_str(), totalTimeStr.c_str(), soundLevel);
+        DrawNowPlayingBar(poppins, poppinsBold, currentSong.title().c_str(), currentSong.artist().c_str(), progressPercent, currentTimeStr.c_str(), totalTimeStr.c_str(), soundLevel);
         DrawControls(isPlaying, isRepeatOn, isShuffleOn, isMuted);
-        DrawNowCard(jotiOne, poppinsBold, poppins, currentSong.title.c_str(), currentSong.artist.c_str(),isPlaying);
-        bool showAllSongs = playlists[currentPlaylistIndex].isDefault && playlists[currentPlaylistIndex].name == "All Songs";
+        DrawNowCard(jotiOne, poppinsBold, poppins, currentSong.title().c_str(), currentSong.artist().c_str(),isPlaying);
+        bool showAllSongs = playlists[currentPlaylistIndex].isDefault() && playlists[currentPlaylistIndex].name() == "All Songs";
         rightClickedSongIndex = -1;
-        int clickedSong = DrawSongList(poppins, poppinsBold, &songListScroll, virtualMouse, songs, currentSongIndex, searchText, playlists[currentPlaylistIndex].songIndices, showAllSongs, &rightClickedSongIndex, &rightClickedRowRec);
+        int clickedSong = DrawSongList(poppins, poppinsBold, &songListScroll, virtualMouse, songs, currentSongIndex, searchText, playlists[currentPlaylistIndex].songIndices(), showAllSongs, &rightClickedSongIndex, &rightClickedRowRec);
 
         if (rightClickedSongIndex != -1)
         {
@@ -546,14 +545,14 @@ int main()
                     PlayMusicStream(currentMusic);
             }
 
-            if (IsNextButtonClicked(virtualMouse))
+            if (nextBtn->IsClicked(virtualMouse))
             {
                 AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
                 LoadSongAudio(currentSongIndex);
                 if (isPlaying)
                     PlayMusicStream(currentMusic);
             }
-            if (IsPreviousButtonClicked(virtualMouse))
+            if (prevBtn->IsClicked(virtualMouse))
             {
                 AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), false, ADV_PREV);
                 LoadSongAudio(currentSongIndex);
@@ -601,21 +600,13 @@ int main()
         if (deletePlaylistConfirmOpen && playlistToDeleteIndex != -1)
         {
             Rectangle popupRec = {760.0f, 460.0f, 400.0f, 160.0f};
-            DrawRectangleRounded(popupRec, 0.1f, 8, (Color){0, 31, 62, 240});
+            std::string msg = "Delete \"" + playlists[playlistToDeleteIndex].name() + "\"?";
+            
+            ConfirmDialog dialog(popupRec, poppins, poppinsBold, msg, virtualMouse);
+            dialog.Draw();
 
-            std::string msg = "Delete \"" + playlists[playlistToDeleteIndex].name + "\"?";
-            DrawTextEx(poppins, msg.c_str(), {popupRec.x + 20.0f, popupRec.y + 20.0f}, 20.0f, 1.0f, WHITE);
-
-            Rectangle yesBtn = {popupRec.x + 40.0f, popupRec.y + 90.0f, 140.0f, 45.0f};
-            Rectangle noBtn = {popupRec.x + 220.0f, popupRec.y + 90.0f, 140.0f, 45.0f};
-
-            DrawRectangleRounded(yesBtn, 0.2f, 8, (Color){0, 115, 230, 255});
-            DrawTextEx(poppins, "Delete", {yesBtn.x + 35.0f, yesBtn.y + 12.0f}, 18.0f, 1.0f, WHITE);
-
-            DrawRectangleRounded(noBtn, 0.2f, 8, (Color){60, 90, 130, 255});
-            DrawTextEx(poppins, "Cancel", {noBtn.x + 35.0f, noBtn.y + 12.0f}, 18.0f, 1.0f, WHITE);
-
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, yesBtn))
+            ConfirmResult res = dialog.GetResult();
+            if (res == CONFIRM_YES)
             {
                 playlistBackends[playlistToDeleteIndex].deletePlaylistFile();
                 playlistBackends.erase(playlistBackends.begin() + playlistToDeleteIndex);
@@ -633,8 +624,7 @@ int main()
                 deletePlaylistConfirmOpen = false;
                 playlistToDeleteIndex = -1;
             }
-
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, noBtn))
+            else if (res == CONFIRM_NO)
             {
                 deletePlaylistConfirmOpen = false;
                 playlistToDeleteIndex = -1;
@@ -647,31 +637,30 @@ int main()
             std::vector<int> userPlaylistRealIndices;
             for (size_t p = 0; p < playlists.size(); ++p)
             {
-                if (!playlists[p].isDefault)
+                if (!playlists[p].isDefault())
                 {
-                    userPlaylistNames.push_back(playlists[p].name);
+                    userPlaylistNames.push_back(playlists[p].name());
                     userPlaylistRealIndices.push_back((int)p);
                 }
             }
 
             bool isFav = favoriteFlags[contextMenuSongIndex];
-            bool showRemoveOption = !playlists[currentPlaylistIndex].isDefault;
+            bool showRemoveOption = !playlists[currentPlaylistIndex].isDefault();
             ContextMenuAction action = DrawSongContextMenu(poppins, contextMenuAnchorRec, isFav, contextMenuShowSubmenu, userPlaylistNames, virtualMouse, showRemoveOption);
 
             if (action.result == CTX_TOGGLE_FAVORITE)
             {
                 favoriteFlags[contextMenuSongIndex] = !favoriteFlags[contextMenuSongIndex];
-                auto &favIndices = playlists[1].songIndices;
                 int songId = library.allSongs()[contextMenuSongIndex].id();
 
                 if (favoriteFlags[contextMenuSongIndex])
                 {
-                    favIndices.push_back(contextMenuSongIndex);
+                    playlists[1].addSongIndex(contextMenuSongIndex);
                     printf("Adding song ID %d to favorites, save result: %d\n", songId, playlistBackends[1].addSong(songId));
                 }
                 else
                 {
-                    favIndices.erase(std::remove(favIndices.begin(), favIndices.end(), contextMenuSongIndex), favIndices.end());
+                    playlists[1].removeSongIndex(contextMenuSongIndex);
                     playlistBackends[1].removeSong(songId);
                 }
                 contextMenuOpen = false;
@@ -683,7 +672,7 @@ int main()
             else if (action.result == CTX_PLAYLIST_SELECTED)
             {
                 int realPlaylistIdx = userPlaylistRealIndices[action.selectedPlaylistIndex];
-                playlists[realPlaylistIdx].songIndices.push_back(contextMenuSongIndex);
+                playlists[realPlaylistIdx].addSongIndex(contextMenuSongIndex);
                 int songId = songs.empty() ? -1 : library.allSongs()[contextMenuSongIndex].id();
                 if (songId != -1)
                 {
@@ -696,8 +685,7 @@ int main()
                 int songId = library.allSongs()[contextMenuSongIndex].id();
                 playlistBackends[currentPlaylistIndex].removeSong(songId);
 
-                auto &indices = playlists[currentPlaylistIndex].songIndices;
-                indices.erase(std::remove(indices.begin(), indices.end(), contextMenuSongIndex), indices.end());
+                playlists[currentPlaylistIndex].removeSongIndex(contextMenuSongIndex);
 
                 contextMenuOpen = false;
             }

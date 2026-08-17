@@ -1,15 +1,23 @@
 #include "controls.h"
 #include "raylib.h"
 
-#define FONT_SCALE 1.0f
-
 static Texture2D shuffleTex;
 static Texture2D skipTex;
+static Texture2D prevTex;
 static Texture2D playTex;
 static Texture2D pauseTex;
 static Texture2D repeatTex;
 static Texture2D volumeTex;
 static Texture2D muteTex;
+
+IconButton* shuffleBtn = nullptr;
+IconButton* prevBtn = nullptr;
+IconButton* playBtn = nullptr;
+IconButton* pauseBtn = nullptr;
+IconButton* nextBtn = nullptr;
+IconButton* repeatBtn = nullptr;
+IconButton* volumeBtn = nullptr;
+IconButton* muteBtn = nullptr;
 
 void LoadControlIcons() {
     shuffleTex = LoadTexture("melodex-gui/icons/shuffle.png");
@@ -17,6 +25,12 @@ void LoadControlIcons() {
     
     skipTex = LoadTexture("melodex-gui/icons/skip.png");
     SetTextureFilter(skipTex, TEXTURE_FILTER_BILINEAR);
+    
+    Image prevImg = LoadImageFromTexture(skipTex);
+    ImageFlipHorizontal(&prevImg);
+    prevTex = LoadTextureFromImage(prevImg);
+    UnloadImage(prevImg);
+    SetTextureFilter(prevTex, TEXTURE_FILTER_BILINEAR);
     
     playTex = LoadTexture("melodex-gui/icons/play.png");
     SetTextureFilter(playTex, TEXTURE_FILTER_BILINEAR);
@@ -38,11 +52,30 @@ void LoadControlIcons() {
     muteTex = LoadTextureFromImage(muteImg);
     UnloadImage(muteImg);
     SetTextureFilter(muteTex, TEXTURE_FILTER_BILINEAR);
+
+    shuffleBtn = new IconButton({ 672.0f, 969.0f, 50.0f, 50.0f }, shuffleTex);
+    prevBtn = new IconButton({ 793.0f, 965.0f, 60.0f, 60.0f }, prevTex);
+    playBtn = new IconButton({ 923.0f, 955.0f, 80.0f, 80.0f }, playTex);
+    pauseBtn = new IconButton({ 923.0f, 955.0f, 80.0f, 80.0f }, pauseTex);
+    nextBtn = new IconButton({ 1075.0f, 960.0f, 60.0f, 60.0f }, skipTex);
+    repeatBtn = new IconButton({ 1190.0f, 965.0f, 50.0f, 50.0f }, repeatTex);
+    volumeBtn = new IconButton({ 1580.0f, 974.0f, 40.0f, 40.0f }, volumeTex);
+    muteBtn = new IconButton({ 1580.0f, 974.0f, 40.0f, 40.0f }, muteTex);
 }
 
 void UnloadControlIcons() {
+    delete shuffleBtn; shuffleBtn = nullptr;
+    delete prevBtn; prevBtn = nullptr;
+    delete playBtn; playBtn = nullptr;
+    delete pauseBtn; pauseBtn = nullptr;
+    delete nextBtn; nextBtn = nullptr;
+    delete repeatBtn; repeatBtn = nullptr;
+    delete volumeBtn; volumeBtn = nullptr;
+    delete muteBtn; muteBtn = nullptr;
+
     UnloadTexture(shuffleTex);
     UnloadTexture(skipTex);
+    UnloadTexture(prevTex);
     UnloadTexture(playTex);
     UnloadTexture(pauseTex);
     UnloadTexture(repeatTex);
@@ -50,87 +83,30 @@ void UnloadControlIcons() {
     UnloadTexture(muteTex); 
 }
 
-void DrawControls(bool isPlaying, bool isRepeatOn, bool isShuffleOn,bool isMuted) {
-    Vector2 origin = {0.0f, 0.0f};
-
-    // a. Shuffle icon
-    Rectangle shuffleSrc = { 0.0f, 0.0f, (float)shuffleTex.width, (float)shuffleTex.height };
-    Rectangle shuffleDest = { 672.0f, 969.0f, 50.0f, 50.0f };
-    Color shuffleColor = isShuffleOn ? SKYBLUE : WHITE;
-    DrawTexturePro(shuffleTex, shuffleSrc, shuffleDest, origin, 0.0f, shuffleColor);
-
-    // b. Previous button (flipped skip icon)
-    Rectangle prevSrc = { 0.0f, 0.0f, (float)skipTex.width * -1.0f, (float)skipTex.height };
-    Rectangle prevDest = { 793.0f, 965.0f, 60.0f, 60.0f };
-    DrawTexturePro(skipTex, prevSrc, prevDest, origin, 0.0f, WHITE);
-
-    // c. Play/Pause button
-    Texture2D activePlayPauseTex = isPlaying ? pauseTex : playTex;
-    Rectangle playSrc = { 0.0f, 0.0f, (float)activePlayPauseTex.width, (float)activePlayPauseTex.height };
-    Rectangle playDest = { 923.0f, 955.0f, 80.0f, 80.0f };
-    DrawTexturePro(activePlayPauseTex, playSrc, playDest, origin, 0.0f, WHITE);
-
-    // d. Next button (normal skip icon)
-    Rectangle nextSrc = { 0.0f, 0.0f, (float)skipTex.width, (float)skipTex.height };
-    Rectangle nextDest = { 1075.0f, 960.0f, 60.0f, 60.0f };
-    DrawTexturePro(skipTex, nextSrc, nextDest, origin, 0.0f, WHITE);
-
-    // e. Repeat icon
-    Rectangle repeatSrc = { 0.0f, 0.0f, (float)repeatTex.width, (float)repeatTex.height };
-    Rectangle repeatDest = { 1190.0f, 965.0f, 50.0f, 50.0f };
-    Color repeatColor = isRepeatOn ? SKYBLUE : WHITE;
-    DrawTexturePro(repeatTex, repeatSrc, repeatDest, origin, 0.0f, repeatColor);
-
-    // f. Volume icon
-    Texture2D activeVolumeTex = isMuted ? muteTex : volumeTex;
-    Rectangle volumeSrc = { 0.0f, 0.0f, (float)activeVolumeTex.width, (float)activeVolumeTex.height };
-    Rectangle volumeDest = { 1580.0f, 974.0f, 40.0f, 40.0f };
-    DrawTexturePro(activeVolumeTex, volumeSrc, volumeDest, origin, 0.0f, WHITE);
-}
-
-bool IsPlayButtonClicked(Vector2 virtualMouse) {
-    Rectangle playBtnRec = { 923.0f, 955.0f, 80.0f, 80.0f };
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, playBtnRec)) {
-        return true;
+void DrawControls(bool isPlaying, bool isRepeatOn, bool isShuffleOn, bool isMuted) {
+    if (shuffleBtn) {
+        shuffleBtn->SetTint(isShuffleOn ? SKYBLUE : WHITE);
+        shuffleBtn->Draw();
     }
-    return false;
-}
-
-bool IsNextButtonClicked(Vector2 virtualMouse) {
-    Rectangle nextBtnRec = { 1075.0f, 960.0f, 60.0f, 60.0f };
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, nextBtnRec)) {
-        return true;
+    
+    if (prevBtn) prevBtn->Draw();
+    
+    if (isPlaying) {
+        if (pauseBtn) pauseBtn->Draw();
+    } else {
+        if (playBtn) playBtn->Draw();
     }
-    return false;
-}
-
-bool IsPreviousButtonClicked(Vector2 virtualMouse) {
-    Rectangle prevBtnRec = { 793.0f, 965.0f, 60.0f, 60.0f };
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, prevBtnRec)) {
-        return true;
+    
+    if (nextBtn) nextBtn->Draw();
+    
+    if (repeatBtn) {
+        repeatBtn->SetTint(isRepeatOn ? SKYBLUE : WHITE);
+        repeatBtn->Draw();
     }
-    return false;
-}
-
-bool IsRepeatButtonClicked(Vector2 virtualMouse) {
-    Rectangle repeatBtnRec = { 1190.0f, 965.0f, 50.0f, 50.0f };
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, repeatBtnRec)) {
-        return true;
+    
+    if (isMuted) {
+        if (muteBtn) muteBtn->Draw();
+    } else {
+        if (volumeBtn) volumeBtn->Draw();
     }
-    return false;
-}
-
-bool IsShuffleButtonClicked(Vector2 virtualMouse) {
-    Rectangle shuffleBtnRec = { 672.0f, 969.0f, 50.0f, 50.0f };
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, shuffleBtnRec)) {
-        return true;
-    }
-    return false;
-}
-bool IsVolumeButtonClicked(Vector2 virtualMouse) {
-    Rectangle volumeBtnRec = { 1580.0f, 974.0f, 40.0f, 40.0f };
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(virtualMouse, volumeBtnRec)) {
-        return true;
-    }
-    return false;
 }

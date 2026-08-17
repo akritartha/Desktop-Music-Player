@@ -2,15 +2,19 @@
 #define CONTROLS_H
 
 #include "raylib.h"
+#include "button.h"
+
+extern IconButton* shuffleBtn;
+extern IconButton* prevBtn;
+extern IconButton* playBtn;
+extern IconButton* pauseBtn;
+extern IconButton* nextBtn;
+extern IconButton* repeatBtn;
+extern IconButton* volumeBtn;
+extern IconButton* muteBtn;
 
 void LoadControlIcons();
 void UnloadControlIcons();
-void DrawControls(bool isPlaying, bool isRepeatOn, bool isShuffleOn,bool isMuted);
-bool IsPlayButtonClicked(Vector2 virtualMouse);
-bool IsNextButtonClicked(Vector2 virtualMouse);
-bool IsPreviousButtonClicked(Vector2 virtualMouse);
-bool IsRepeatButtonClicked(Vector2 virtualMouse);
-bool IsShuffleButtonClicked(Vector2 virtualMouse);
-bool IsVolumeButtonClicked(Vector2 virtualMouse);
+void DrawControls(bool isPlaying, bool isRepeatOn, bool isShuffleOn, bool isMuted);
 
 #endif // CONTROLS_H
