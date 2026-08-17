@@ -17,24 +17,36 @@ Melodex is a C++ desktop music player built entirely with raylib (no Qt). It pro
 - **Search**: Real-time filtering and searching of your library.
 
 ## Prerequisites
-This project requires a Linux environment (due to X11/OpenGL dependencies) and the following installed packages:
-- **g++**: A C++ compiler.
-- **raylib**: Ensure raylib and its dependencies are installed on your system.
+This project supports both **Linux** and **Windows**. You will need the following installed:
+- **g++**: A C++ compiler (e.g., MinGW-w64 for Windows, standard GCC for Linux).
+- **raylib**: Ensure raylib and its platform-specific dependencies are installed on your system.
 
 *Note: There are no automated build scripts (e.g., CMake) currently included; compilation relies on direct compiler invocation.*
 
 ## Build Instructions
-Run the following command from the root directory of the project to compile:
+Run the appropriate command from the root directory of the project for your operating system:
 
+**For Linux:**
 ```bash
 g++ main.cpp melodex-gui/*.cpp Database/*.cpp -Imelodex-gui -IDatabase -o melodex -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+```
+
+**For Windows (using MinGW):**
+```bash
+g++ main.cpp melodex-gui/*.cpp Database/*.cpp -Imelodex-gui -IDatabase -o melodex.exe -lraylib -lopengl32 -lgdi32 -lwinmm
 ```
 
 ## Run Instructions
 After successfully compiling, execute the compiled binary:
 
+**For Linux:**
 ```bash
 ./melodex
+```
+
+**For Windows:**
+```cmd
+melodex.exe
 ```
 
 ## Project Structure
