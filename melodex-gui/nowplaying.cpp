@@ -2,8 +2,12 @@
 #include "raylib.h"
 #include "textutils.h"
 #include <math.h>
+#include "slider.h"
 
 #define FONT_SCALE 1.0f
+
+static Slider seekSlider({ 505.0f, 915.0f, 910.0f, 8.7f }, 0.0f);
+static Slider volumeSlider({ 1642.0f, 990.0f, 175.0f, 7.0f }, 0.0f);
 
 void DrawNowPlayingBar(Font poppinsFont, Font poppinsBold, const char* songTitle, const char* artistName, float progressPercent, const char* currentTime, const char* totalTime, float soundLevel) {
     // 1. Background bar
@@ -32,14 +36,9 @@ void DrawNowPlayingBar(Font poppinsFont, Font poppinsBold, const char* songTitle
     std::string truncArtist = TruncateText(poppinsFont, artistName, 23.0f * FONT_SCALE, 1.0f, 250.0f);
     DrawTextEx(poppinsFont, truncArtist.c_str(), artistPos, 23.0f * FONT_SCALE, 1.0f, WHITE);
 
-    // 6. Background progress track
-    Rectangle bgProgressRec = { 505.0f, 915.0f, 910.0f, 8.7f };
-    Color bgProgressColor = { 255, 255, 255, 128 };
-    DrawRectangleRounded(bgProgressRec, 0.8f, 6, bgProgressColor);
-
-    // 7. Filled progress
-    Rectangle filledProgressRec = { 505.0f, 915.0f, 910.0f * progressPercent, 8.7f };
-    DrawRectangleRounded(filledProgressRec, 0.8f, 6, WHITE);
+    // 6 & 7. Background progress track & Filled progress
+    seekSlider = Slider({ 505.0f, 915.0f, 910.0f, 8.7f }, progressPercent);
+    seekSlider.Draw();
 
     // 8. Current time text
     Vector2 currentTimePos = { 445.0f, 905.0f };
@@ -50,42 +49,17 @@ void DrawNowPlayingBar(Font poppinsFont, Font poppinsBold, const char* songTitle
     Vector2 totalTimePos = { 1475.0f - totalTextSize.x, 905.0f };
     DrawTextEx(poppinsFont, totalTime, totalTimePos, 30.0f * FONT_SCALE, 1.0f, WHITE);
 
-    // 10. sound level background track
-    Rectangle soundTrackRec = { 1642.0f, 990.0f, 175.0f, 7.0f };
-    Color soundTrackColor = { 255, 255, 255, 128 };
-    DrawRectangleRounded(soundTrackRec, 0.8f, 6, soundTrackColor);
-
-    // 11. sound level filled portion (current volume)
-    Rectangle soundFillRec = { 1642.0f, 990.0f, 175.0f * soundLevel, 7.0f };
-    DrawRectangleRounded(soundFillRec, 0.8f, 6, WHITE);
+    // 10 & 11. sound level background track & filled portion (current volume)
+    volumeSlider = Slider({ 1642.0f, 990.0f, 175.0f, 7.0f }, soundLevel);
+    volumeSlider.Draw();
 }
 
 float UpdateSoundLevel(Vector2 virtualMouse, float currentSoundLevel) {
-    Rectangle soundBarRec = { 1642.0f, 990.0f, 175.0f, 7.0f };
-    
-    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) && 
-        virtualMouse.y >= (soundBarRec.y - 15.0f) && virtualMouse.y <= (soundBarRec.y + 15.0f) &&
-        virtualMouse.x >= (soundBarRec.x - 10.0f) && virtualMouse.x <= (soundBarRec.x + soundBarRec.width + 10.0f)) {
-        
-        float newLevel = (virtualMouse.x - soundBarRec.x) / soundBarRec.width;
-        newLevel = fmaxf(0.0f, fminf(1.0f, newLevel));
-        return newLevel;
-    }
-    
-    return currentSoundLevel;
+    volumeSlider = Slider({ 1642.0f, 990.0f, 175.0f, 7.0f }, currentSoundLevel);
+    return volumeSlider.UpdateDrag(virtualMouse);
 }
 
 float UpdateSeekPosition(Vector2 virtualMouse, float currentProgressPercent, float totalSeconds) {
-    Rectangle bar = { 505.0f, 915.0f, 910.0f, 8.7f };
-
-    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON) &&
-        virtualMouse.y >= (bar.y - 15.0f) && virtualMouse.y <= (bar.y + 15.0f) &&
-        virtualMouse.x >= (bar.x - 10.0f) && virtualMouse.x <= (bar.x + bar.width + 10.0f)) {
-
-        float newPercent = (virtualMouse.x - bar.x) / bar.width;
-        newPercent = fmaxf(0.0f, fminf(1.0f, newPercent));
-        return newPercent;
-    }
-
-    return currentProgressPercent;
+    seekSlider = Slider({ 505.0f, 915.0f, 910.0f, 8.7f }, currentProgressPercent);
+    return seekSlider.UpdateDrag(virtualMouse);
 }
