@@ -24,6 +24,14 @@ void DrawNowCard(Font jotiOneFont, Font jotiOneFontBold, Font poppinsFont, const
     // 4. Big "M" letter
     Vector2 mPos = {920.0f, 307.0f};
     DrawTextEx(jotiOneFont, "M", mPos, 130.0f * FONT_SCALE, 2.0f, WHITE);
+    
+    // static Texture2D logoTexture;
+    // logoTexture = LoadTexture("melodex-gui/icons/songthumbnail.jpg");
+    // SetTextureFilter(logoTexture, TEXTURE_FILTER_BILINEAR);
+    // Rectangle logoSource = { 0, 0, (float)logoTexture.width, (float)logoTexture.height };
+    // Rectangle logoDest = { 500.0f, 500.0f, 60.0f, 70.0f };
+    // DrawTexturePro(logoTexture,logoSource,logoDest,(Vector2){0, 0},0.0f,WHITE);
+    // UnloadTexture(logoTexture);
 
     // 5. Song title
     Vector2 titlePos = {777.0f, 604.0f};
