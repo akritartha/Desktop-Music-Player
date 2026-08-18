@@ -1,6 +1,56 @@
-# Desktop-Music-Player
-### Team Members:
-1) 082BCT034 -> Kritartha Adhikari -> Database
-2) 082BCT040 -> Nikit Bhatta -> Audio Engine
-3) 082BCT044 -> Nischhal Shrestha -> GUI
+# Melodex
+
+Melodex is a C++ desktop music player built entirely with raylib (no Qt). It provides a sleek, custom-built object-oriented GUI for managing and playing your local audio library.
+
+## Team & Roles
+- **GUI**: Nischhal (082BCT044)
+- **Audio Engine**: Nikit Bhatta (082BCT040)
+- **Database/Library**: Kritartha Adhikari (082BCT034)
+
+## Features
+- **Playback**: Play, pause, skip, shuffle, repeat, and volume/seek controls.
+- **Library Management**: Scan local folders and build a database of your music.
+- **Playlists & Favorites**: Create custom playlists and toggle favorite songs.
+- **Context Menu**: Right-click context menu on songs for quick actions.
+- **Responsive UI**: Fully custom, resizable application window built from scratch.
+- **Multi-Format Support**: Natively plays `.mp3`, `.ogg`, `.flac`, and `.wav` files.
+- **Search**: Real-time filtering and searching of your library.
+
+## Prerequisites
+This project supports both **Linux** and **Windows**. You will need the following installed:
+- **g++**: A C++ compiler (e.g., MinGW-w64 for Windows, standard GCC for Linux).
+- **raylib**: Ensure raylib and its platform-specific dependencies are installed on your system.
+
+*Note: There are no automated build scripts (e.g., CMake) currently included; compilation relies on direct compiler invocation.*
+
+## Build Instructions
+Run the appropriate command from the root directory of the project for your operating system:
+
+**For Linux:**
+```bash
+g++ main.cpp melodex-gui/*.cpp Database/*.cpp -Imelodex-gui -IDatabase -o melodex -lraylib -lGL -lm -lpthread -ldl -lrt -lX11
+```
+
+**For Windows (using MinGW):**
+```bash
+g++ main.cpp melodex-gui/*.cpp Database/*.cpp -Imelodex-gui -IDatabase -o melodex.exe -lraylib -lopengl32 -lgdi32 -lwinmm
+```
+
+## Run Instructions
+After successfully compiling, execute the compiled binary:
+
+**For Linux:**
+```bash
+./melodex
+```
+
+**For Windows:**
+```cmd
+melodex.exe
+```
+
+## Project Structure
+- `melodex-gui/`: Contains the frontend UI layer, utilizing a custom OOP component hierarchy (menus, buttons, sliders, panels) built on raylib.
+- `Database/`: Contains the backend database and audio library logic, managing track indexing, file parsing, and playlists.
+
 
