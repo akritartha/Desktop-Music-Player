@@ -251,6 +251,10 @@ public:
             loadedSongIndex = index;
             totalSeconds = GetMusicTimeLength(currentMusic);
             currentSeconds = 0.0f;
+
+            // "prime" the stream so it's always ready to be resumed, never needs a fresh PlayMusicStream elsewhere
+            PlayMusicStream(currentMusic);
+            PauseMusicStream(currentMusic);
         }
     }
     // Handles play/pause, shuffle, repeat, mute toggles, and volume/seek input.
@@ -303,7 +307,7 @@ public:
             if (playBtn->IsClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
             {
                 isPlaying = !isPlaying;
-                if (isPlaying) PlayMusicStream(currentMusic);
+                if (isPlaying) ResumeMusicStream(currentMusic);
                 else PauseMusicStream(currentMusic);
             }
             if (repeatBtn->IsClicked(virtualMouse))
@@ -388,6 +392,72 @@ public:
         AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), false, ADV_PREV);
         LoadSongAudio(currentSongIndex);
         if (isPlaying) PlayMusicStream(currentMusic);
+    }
+
+        // Creates a new playlist (both the UI entry and its file-backed storage)
+    void CreatePlaylistEntry(const std::string& name, const std::string& coverPath)
+    {
+        if (name.empty()) return;
+        playlists.push_back(PlaylistEntry(name, coverPath));
+        std::string filename = "melodex-gui/playlists/" + name + ".txt";
+        playlistBackends.push_back(Playlist(name, filename));
+    }
+
+    // Deletes the playlist at the given index, both from disk and from the UI list.
+    // Adjusts currentPlaylistIndex if needed so it still points somewhere valid.
+    void DeletePlaylistAt(int index)
+    {
+        if (index < 0 || index >= (int)playlists.size()) return;
+
+        playlistBackends[index].deletePlaylistFile();
+        playlistBackends.erase(playlistBackends.begin() + index);
+        playlists.erase(playlists.begin() + index);
+
+        if (currentPlaylistIndex == index)
+        {
+            currentPlaylistIndex = 0;
+        }
+        else if (currentPlaylistIndex > index)
+        {
+            currentPlaylistIndex--;
+        }
+    }
+
+    // Toggles favorite status for a song, updating both the "Favorites" playlist entry
+    // and its file-backed storage (Favorites is always playlists[1] by convention)
+    void ToggleFavorite(int songIndex)
+    {
+        favoriteFlags[songIndex] = !favoriteFlags[songIndex];
+        int songId = library.allSongs()[songIndex].id();
+
+        if (favoriteFlags[songIndex])
+        {
+            playlists[1].addSongIndex(songIndex);
+            playlistBackends[1].addSong(songId);
+        }
+        else
+        {
+            playlists[1].removeSongIndex(songIndex);
+            playlistBackends[1].removeSong(songId);
+        }
+    }
+
+    // Adds a song to a specific playlist, both in the UI entry and on disk
+    void AddSongToPlaylist(int playlistIndex, int songIndex)
+    {
+        if (songIndex < 0 || songIndex >= (int)songs.size()) return;
+
+        playlists[playlistIndex].addSongIndex(songIndex);
+        int songId = library.allSongs()[songIndex].id();
+        playlistBackends[playlistIndex].addSong(songId);
+    }
+
+    // Removes a song from a specific playlist, both in the UI entry and on disk
+    void RemoveSongFromPlaylist(int playlistIndex, int songIndex)
+    {
+        int songId = library.allSongs()[songIndex].id();
+        playlistBackends[playlistIndex].removeSong(songId);
+        playlists[playlistIndex].removeSongIndex(songIndex);
     }
 
 
@@ -498,13 +568,7 @@ int main()
             }
             else if (result == POPUP_CREATED)
             {
-                if (!newPlaylistName.empty())
-                {
-                    playlists.push_back(PlaylistEntry(newPlaylistName, newPlaylistCoverPath));
-                    std::string filename = "melodex-gui/playlists/" + newPlaylistName + ".txt";
-                    Playlist newBackend(newPlaylistName, filename);
-                    playlistBackends.push_back(newBackend);
-                }
+                app.CreatePlaylistEntry(newPlaylistName, newPlaylistCoverPath);
                 showCreatePlaylistPopup = false;
                 newPlaylistName = "";
                 newPlaylistCoverPath = "";
@@ -684,24 +748,12 @@ int main()
             dialog.Draw();
 
             ConfirmResult res = dialog.GetResult();
-            if (res == CONFIRM_YES)
-            {
-                playlistBackends[playlistToDeleteIndex].deletePlaylistFile();
-                playlistBackends.erase(playlistBackends.begin() + playlistToDeleteIndex);
-                playlists.erase(playlists.begin() + playlistToDeleteIndex);
-
-                if (currentPlaylistIndex == playlistToDeleteIndex)
-                {
-                    currentPlaylistIndex = 0;
-                }
-                else if (currentPlaylistIndex > playlistToDeleteIndex)
-                {
-                    currentPlaylistIndex--;
-                }
-
-                deletePlaylistConfirmOpen = false;
-                playlistToDeleteIndex = -1;
-            }
+        if (res == CONFIRM_YES)
+        {
+            app.DeletePlaylistAt(playlistToDeleteIndex);
+            deletePlaylistConfirmOpen = false;
+            playlistToDeleteIndex = -1;
+        }
             else if (res == CONFIRM_NO)
             {
                 deletePlaylistConfirmOpen = false;
@@ -728,19 +780,7 @@ int main()
 
             if (action.result == CTX_TOGGLE_FAVORITE)
             {
-                favoriteFlags[contextMenuSongIndex] = !favoriteFlags[contextMenuSongIndex];
-                int songId = library.allSongs()[contextMenuSongIndex].id();
-
-                if (favoriteFlags[contextMenuSongIndex])
-                {
-                    playlists[1].addSongIndex(contextMenuSongIndex);
-                    printf("Adding song ID %d to favorites, save result: %d\n", songId, playlistBackends[1].addSong(songId));
-                }
-                else
-                {
-                    playlists[1].removeSongIndex(contextMenuSongIndex);
-                    playlistBackends[1].removeSong(songId);
-                }
+                app.ToggleFavorite(contextMenuSongIndex);
                 contextMenuOpen = false;
             }
             else if (action.result == CTX_ADD_TO_PLAYLIST_SUBMENU)
@@ -750,21 +790,15 @@ int main()
             else if (action.result == CTX_PLAYLIST_SELECTED)
             {
                 int realPlaylistIdx = userPlaylistRealIndices[action.selectedPlaylistIndex];
-                playlists[realPlaylistIdx].addSongIndex(contextMenuSongIndex);
-                int songId = songs.empty() ? -1 : library.allSongs()[contextMenuSongIndex].id();
-                if (songId != -1)
+                if (!songs.empty())
                 {
-                    playlistBackends[realPlaylistIdx].addSong(songId);
+                    app.AddSongToPlaylist(realPlaylistIdx, contextMenuSongIndex);
                 }
                 contextMenuOpen = false;
             }
             else if (action.result == CTX_REMOVE_FROM_PLAYLIST)
             {
-                int songId = library.allSongs()[contextMenuSongIndex].id();
-                playlistBackends[currentPlaylistIndex].removeSong(songId);
-
-                playlists[currentPlaylistIndex].removeSongIndex(contextMenuSongIndex);
-
+                app.RemoveSongFromPlaylist(currentPlaylistIndex, contextMenuSongIndex);
                 contextMenuOpen = false;
             }
             else if (action.result == CTX_CLOSED)
