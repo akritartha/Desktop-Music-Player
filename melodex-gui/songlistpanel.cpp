@@ -1,6 +1,7 @@
 #include "songlistpanel.h"
 #include "textutils.h"
 #include <cctype>
+#include <unordered_map>
 
 #define FONT_SCALE 1.0f
 
@@ -66,18 +67,19 @@ void SongListPanel::Draw() {
             DrawRectangleRounded(rowRec, 0.15f, 8, rowColor);
 
             Rectangle thumbRec = { 100.0f, rowY + 16.0f, 70.0f, 70.0f };
-            Color leftColor = { 0, 31, 62, 255 };
-            Color rightColor = { 0, 115, 230, 255 };
-            DrawRectangleGradientEx(thumbRec, leftColor, leftColor, rightColor, rightColor);
 
-            if (!song.title().empty()) {
-                std::string fallbackStr(1, (char)toupper(song.title()[0]));
-                Vector2 textSize = MeasureTextEx(poppinsFontBold, fallbackStr.c_str(), 30.0f * FONT_SCALE, 1.0f);
-                Vector2 textPos = {
-                    thumbRec.x + (thumbRec.width - textSize.x) / 2.0f,
-                    thumbRec.y + (thumbRec.height - textSize.y) / 2.0f
-                };
-                DrawTextEx(poppinsFontBold, fallbackStr.c_str(), textPos, 30.0f * FONT_SCALE, 1.0f, WHITE);
+            static std::unordered_map<std::string, Texture2D> thumbnailCache;
+            if (!song.thumbnailPath().empty() && FileExists(song.thumbnailPath().c_str())) {
+                Texture2D& thumbnail = thumbnailCache[song.thumbnailPath()];
+                if (thumbnail.id == 0) {
+                    thumbnail = LoadTexture(song.thumbnailPath().c_str());
+                    SetTextureFilter(thumbnail, TEXTURE_FILTER_BILINEAR);
+                }
+
+                Rectangle texSource = { 0.0f, 0.0f, (float)thumbnail.width, (float)thumbnail.height };
+                DrawTexturePro(thumbnail, texSource, thumbRec, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+            } else {
+                DrawRectangleRounded(thumbRec, 0.12f, 8, Color{255, 255, 255, 76});
             }
 
             Vector2 titlePos = { 199.0f, rowY + 25.0f };

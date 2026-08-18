@@ -8,6 +8,8 @@
 
 static Slider seekSlider({ 505.0f, 915.0f, 910.0f, 8.7f }, 0.0f);
 static Slider volumeSlider({ 1642.0f, 990.0f, 175.0f, 7.0f }, 0.0f);
+static Texture2D nowPlayingThumbnail = { 0 };
+static bool nowPlayingThumbnailLoaded = false;
 
 void DrawNowPlayingBar(Font poppinsFont, Font poppinsBold, const char* songTitle, const char* artistName, float progressPercent, const char* currentTime, const char* totalTime, float soundLevel) {
     // 1. Background bar
@@ -15,18 +17,28 @@ void DrawNowPlayingBar(Font poppinsFont, Font poppinsBold, const char* songTitle
     Color bgColor = { 255, 255, 255, 76 };
     DrawRectangleRounded(bgRec, 0.15f, 8, bgColor);
     
-    // 2. Mini album art using DrawRectangleGradientEx
+    // 2. Mini album art
     Rectangle albumRec = { 60.0f, 948.0f, 84.0f, 84.0f };
-    Color leftCol = { 0, 31, 62, 255 };
-    Color rightCol = { 0, 115, 230, 255 };
-    // col1: top-left, col2: bottom-left, col3: bottom-right, col4: top-right
-    DrawRectangleGradientEx(albumRec, leftCol, leftCol, rightCol, rightCol);
+    if (!nowPlayingThumbnailLoaded) {
+        if (FileExists("melodex-gui/icons/songthumbnail.jpg")) {
+            nowPlayingThumbnail = LoadTexture("melodex-gui/icons/songthumbnail.jpg");
+            SetTextureFilter(nowPlayingThumbnail, TEXTURE_FILTER_BILINEAR);
+        }
+        nowPlayingThumbnailLoaded = true;
+    }
+
+    if (nowPlayingThumbnail.id != 0) {
+        Rectangle texSource = { 0.0f, 0.0f, (float)nowPlayingThumbnail.width, (float)nowPlayingThumbnail.height };
+        DrawTexturePro(nowPlayingThumbnail, texSource, albumRec, (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+    } else {
+        Color leftCol = { 0, 31, 62, 255 };
+        Color rightCol = { 0, 115, 230, 255 };
+        DrawRectangleGradientEx(albumRec, leftCol, leftCol, rightCol, rightCol);
+        Vector2 mPos = { 87.0f, 966.0f };
+        DrawTextEx(poppinsFont, "M", mPos, 50.0f * FONT_SCALE, 100.0f, WHITE);
+    }
     
-    // 3. "M" letter
-    Vector2 mPos = { 87.0f, 966.0f };
-    DrawTextEx(poppinsFont, "M", mPos, 50.0f * FONT_SCALE, 100.0f, WHITE);
-    
-    // 4. Song title
+    // 3. Song title
     Vector2 titlePos = { 177.0f, 962.0f };
     std::string truncTitle = TruncateText(poppinsBold, songTitle, 30.0f * FONT_SCALE, 1.0f, 250.0f);
     DrawTextEx(poppinsBold, truncTitle.c_str(), titlePos, 30.0f * FONT_SCALE, 1.0f, WHITE);

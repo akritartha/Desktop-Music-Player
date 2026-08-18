@@ -25,7 +25,7 @@
 
 SongEntry ToSongEntry(const Song &s)
 {
-    return SongEntry(s.title(), s.artist(), "");
+    return SongEntry(s.title(), s.artist(), "melodex-gui/icons/songthumbnail.jpg");
 }
 
 int FindSongIndexById(const std::vector<Song> &allSongs, int id)
@@ -82,6 +82,387 @@ void AdvanceSong(int &currentSongIndex, const std::vector<PlaylistEntry> &playli
     currentSongIndex = activeIndices[pos];
 }
 
+class MusicPlayerApp
+{
+public:
+    Library library;
+    std::vector<SongEntry> songs;
+    std::vector<PlaylistEntry> playlists;
+    std::vector<Playlist> playlistBackends;
+    std::vector<std::string> extraScannedFolders;
+    std::vector<bool> favoriteFlags;
+
+    Music currentMusic = {0};
+    int loadedSongIndex = -1;
+    int currentSongIndex = 0;
+    int currentPlaylistIndex = 0;
+
+    bool isPlaying = false;
+    bool isRepeatOn = false;
+    bool isShuffleOn = false;
+    bool isMuted = false;
+    float soundLevel = 0.7f;
+    float currentSeconds = 0.0f;
+    float totalSeconds = 0.0f;
+    float lastDraggedPercent = -1.0f;
+
+    std::string searchText = "";
+    bool searchBoxActive = false;
+    float songListScroll = 0.0f;
+    float playlistScroll = 0.0f;
+
+    int rightClickedSongIndex = -1;
+    Rectangle rightClickedRowRec = {0, 0, 0, 0};
+    bool contextMenuOpen = false;
+    bool contextMenuShowSubmenu = false;
+    int contextMenuSongIndex = -1;
+    Rectangle contextMenuAnchorRec = {0, 0, 0, 0};
+
+    int rightClickedPlaylistIndex = -1;
+    bool deletePlaylistConfirmOpen = false;
+    int playlistToDeleteIndex = -1;
+
+    bool showCreatePlaylistPopup = false;
+    std::string newPlaylistName = "";
+    std::string newPlaylistCoverPath = "";
+    bool nameFieldActive = false;
+    bool coverFieldActive = false;
+
+    bool showAddFolderPopup = false;
+    std::string newFolderPath = "";
+    bool folderFieldActive = false;
+
+    std::string extraFoldersConfigPath = "melodex-gui/scanned_folders.txt";
+
+    MusicPlayerApp(const std::string& dbPath) : library(dbPath) {}
+    
+
+    void Init()
+    {
+        library.load();
+        library.scanFolders("melodex-gui/songs");
+
+        {
+            std::ifstream cfgIn(extraFoldersConfigPath);
+            if (cfgIn.is_open())
+            {
+                std::string line;
+                while (std::getline(cfgIn, line))
+                {
+                    if (line.empty())
+                        continue;
+                    extraScannedFolders.push_back(line);
+                    library.scanFolders(line);
+                }
+            }
+        }
+
+        for (const Song &s : library.allSongs())
+        {
+            songs.push_back(ToSongEntry(s));
+        }
+        if (songs.empty())
+        {
+            songs.push_back({"No songs in library", "Add songs to musicdb.txt", ""});
+        }
+
+        playlists.push_back(PlaylistEntry("All Songs", "melodex-gui/icons/allsongs.jpg", true));
+        playlists.push_back(PlaylistEntry("Favorites", "melodex-gui/icons/favourites.jpeg", true));
+
+        for (const auto &p : playlists)
+        {
+            std::string filename = "melodex-gui/playlists/" + p.name() + ".txt";
+            Playlist pl(p.name(), filename);
+            pl.load();
+            playlistBackends.push_back(pl);
+        }
+
+        for (size_t i = 0; i < playlists.size(); i++)
+        {
+            for (int songId : playlistBackends[i].songIds())
+            {
+                int idx = FindSongIndexById(library.allSongs(), songId);
+                if (idx != -1)
+                {
+                    playlists[i].addSongIndex(idx);
+                }
+            }
+        }
+
+        namespace fs = std::filesystem;
+        if (fs::exists("melodex-gui/playlists"))
+        {
+            for (const auto &entry : fs::directory_iterator("melodex-gui/playlists"))
+            {
+                if (entry.path().extension() == ".txt")
+                {
+                    std::string name = entry.path().stem().string();
+
+                    bool alreadyLoaded = false;
+                    for (const auto &p : playlists)
+                    {
+                        if (p.name() == name)
+                        {
+                            alreadyLoaded = true;
+                            break;
+                        }
+                    }
+
+                    if (!alreadyLoaded)
+                    {
+                        Playlist pl(name, entry.path().string());
+                        pl.load();
+
+                        PlaylistEntry newEntry(name, "", false);
+                        for (int songId : pl.songIds())
+                        {
+                            int idx = FindSongIndexById(library.allSongs(), songId);
+                            if (idx != -1)
+                                newEntry.addSongIndex(idx);
+                        }
+
+                        playlists.push_back(newEntry);
+                        playlistBackends.push_back(pl);
+                    }
+                }
+            }
+        }
+
+        favoriteFlags.resize(songs.size(), false);
+    }
+
+
+    // Loads audio for the song at the given index, replacing whatever is currently loaded
+    void LoadSongAudio(int index)
+    {
+        // stop and free the previous song's audio, if any
+        if (loadedSongIndex != -1 && currentMusic.frameCount > 0)
+        {
+            StopMusicStream(currentMusic);
+            UnloadMusicStream(currentMusic);
+        }
+
+        // load new song and reset playback position
+        if (index >= 0 && index < (int)library.allSongs().size())
+        {
+            std::string path = library.allSongs()[index].filepath();
+            currentMusic = LoadMusicStream(path.c_str());
+            SetMusicVolume(currentMusic, soundLevel);
+            loadedSongIndex = index;
+            totalSeconds = GetMusicTimeLength(currentMusic);
+            currentSeconds = 0.0f;
+
+            // "prime" the stream so it's always ready to be resumed, never needs a fresh PlayMusicStream elsewhere
+            PlayMusicStream(currentMusic);
+            PauseMusicStream(currentMusic);
+        }
+    }
+    // Handles play/pause, shuffle, repeat, mute toggles, and volume/seek input.
+    // Assumes virtualMouse and popup-blocking flags are passed in each frame.
+    void HandlePlaybackInput(Vector2 virtualMouse, bool popupsOpen,
+                            IconButton* playBtn, IconButton* repeatBtn, IconButton* shuffleBtn, IconButton* volumeBtn)
+    {
+        // volume slider + drag-based seek stay here since they don't depend on popups
+        soundLevel = UpdateSoundLevel(virtualMouse, soundLevel);
+        SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+
+        float progressPercent = (totalSeconds > 0) ? (currentSeconds / totalSeconds) : 0.0f;
+        float draggedPercent = UpdateSeekPosition(virtualMouse, progressPercent, totalSeconds);
+
+        bool isDragging = IsMouseButtonDown(MOUSE_LEFT_BUTTON) && (draggedPercent != progressPercent);
+        if (isDragging)
+        {
+            lastDraggedPercent = draggedPercent;
+        }
+
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && totalSeconds > 0 && lastDraggedPercent >= 0.0f)
+        {
+            float newTime = lastDraggedPercent * totalSeconds;
+            SeekMusicStream(currentMusic, newTime);
+            currentSeconds = newTime;
+            lastDraggedPercent = -1.0f;
+        }
+
+        if (IsKeyPressed(KEY_UP))
+        {
+            soundLevel += 0.05f;
+            if (soundLevel > 1.0f) soundLevel = 1.0f;
+            SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+        }
+        if (IsKeyPressed(KEY_DOWN))
+        {
+            soundLevel -= 0.05f;
+            if (soundLevel < 0.0f) soundLevel = 0.0f;
+            SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+        }
+
+        if (IsKeyPressed(KEY_M) || (!popupsOpen && volumeBtn->IsClicked(virtualMouse)))
+        {
+            isMuted = !isMuted;
+            SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+        }
+
+        if (!popupsOpen)
+        {
+            if (playBtn->IsClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
+            {
+                isPlaying = !isPlaying;
+                if (isPlaying) ResumeMusicStream(currentMusic);
+                else PauseMusicStream(currentMusic);
+            }
+            if (repeatBtn->IsClicked(virtualMouse))
+            {
+                if (isShuffleOn) isShuffleOn = false;
+                isRepeatOn = !isRepeatOn;
+            }
+            if (shuffleBtn->IsClicked(virtualMouse))
+            {
+                if (isRepeatOn) isRepeatOn = false;
+                isShuffleOn = !isShuffleOn;
+            }
+        }
+    }// Called every frame while playing; advances/repeats when the current song finishes
+    
+    void UpdatePlayback()
+    {
+        if (!isPlaying) return;
+
+        UpdateMusicStream(currentMusic);
+        currentSeconds = GetMusicTimePlayed(currentMusic);
+
+        if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f)
+        {
+            if (isRepeatOn)
+            {
+                SeekMusicStream(currentMusic, 0.0f);
+                currentSeconds = 0.0f;
+            }
+            else
+            {
+                AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
+                LoadSongAudio(currentSongIndex);
+                PlayMusicStream(currentMusic);
+            }
+        }
+    }
+
+    // Handles left/right arrow key seeking (5s jumps), including song-skip at boundaries
+    void HandleSeekKeys()
+    {
+        if (IsKeyPressed(KEY_RIGHT))
+        {
+            currentSeconds += 5.0f;
+            if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f)
+            {
+                if (isRepeatOn)
+                {
+                    currentSeconds = 0.0f;
+                    SeekMusicStream(currentMusic, 0.0f);
+                }
+                else
+                {
+                    AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
+                    LoadSongAudio(currentSongIndex);
+                    if (isPlaying) PlayMusicStream(currentMusic);
+                }
+            }
+            else
+            {
+                SeekMusicStream(currentMusic, currentSeconds);
+            }
+        }
+        if (IsKeyPressed(KEY_LEFT))
+        {
+            currentSeconds -= 5.0f;
+            if (currentSeconds < 0.0f) currentSeconds = 0.0f;
+            SeekMusicStream(currentMusic, currentSeconds);
+        }
+    }
+
+    // Advances to next/previous song, respecting shuffle and the active playlist
+    void NextSong()
+    {
+        AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
+        LoadSongAudio(currentSongIndex);
+        if (isPlaying) PlayMusicStream(currentMusic);
+    }
+
+    void PreviousSong()
+    {
+        AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), false, ADV_PREV);
+        LoadSongAudio(currentSongIndex);
+        if (isPlaying) PlayMusicStream(currentMusic);
+    }
+
+        // Creates a new playlist (both the UI entry and its file-backed storage)
+    void CreatePlaylistEntry(const std::string& name, const std::string& coverPath)
+    {
+        if (name.empty()) return;
+        playlists.push_back(PlaylistEntry(name, coverPath));
+        std::string filename = "melodex-gui/playlists/" + name + ".txt";
+        playlistBackends.push_back(Playlist(name, filename));
+    }
+
+    // Deletes the playlist at the given index, both from disk and from the UI list.
+    // Adjusts currentPlaylistIndex if needed so it still points somewhere valid.
+    void DeletePlaylistAt(int index)
+    {
+        if (index < 0 || index >= (int)playlists.size()) return;
+
+        playlistBackends[index].deletePlaylistFile();
+        playlistBackends.erase(playlistBackends.begin() + index);
+        playlists.erase(playlists.begin() + index);
+
+        if (currentPlaylistIndex == index)
+        {
+            currentPlaylistIndex = 0;
+        }
+        else if (currentPlaylistIndex > index)
+        {
+            currentPlaylistIndex--;
+        }
+    }
+
+    // Toggles favorite status for a song, updating both the "Favorites" playlist entry
+    // and its file-backed storage (Favorites is always playlists[1] by convention)
+    void ToggleFavorite(int songIndex)
+    {
+        favoriteFlags[songIndex] = !favoriteFlags[songIndex];
+        int songId = library.allSongs()[songIndex].id();
+
+        if (favoriteFlags[songIndex])
+        {
+            playlists[1].addSongIndex(songIndex);
+            playlistBackends[1].addSong(songId);
+        }
+        else
+        {
+            playlists[1].removeSongIndex(songIndex);
+            playlistBackends[1].removeSong(songId);
+        }
+    }
+
+    // Adds a song to a specific playlist, both in the UI entry and on disk
+    void AddSongToPlaylist(int playlistIndex, int songIndex)
+    {
+        if (songIndex < 0 || songIndex >= (int)songs.size()) return;
+
+        playlists[playlistIndex].addSongIndex(songIndex);
+        int songId = library.allSongs()[songIndex].id();
+        playlistBackends[playlistIndex].addSong(songId);
+    }
+
+    // Removes a song from a specific playlist, both in the UI entry and on disk
+    void RemoveSongFromPlaylist(int playlistIndex, int songIndex)
+    {
+        int songId = library.allSongs()[songIndex].id();
+        playlistBackends[playlistIndex].removeSong(songId);
+        playlists[playlistIndex].removeSongIndex(songIndex);
+    }
+
+
+};
+
 int main()
 {
     srand((unsigned int)time(nullptr));
@@ -109,144 +490,36 @@ int main()
     LoadTopBarAssets();
     LoadSongListAssets();
 
-    bool isPlaying = false;
-    bool isRepeatOn = false;
-    bool isShuffleOn = false;
-    float soundLevel = 0.7f;
-    bool isMuted = false;
-    float currentSeconds = 0.0f;
-    float totalSeconds = 0.0f;
-    float songListScroll = 0.0f;
-    float lastDraggedPercent = -1.0f;
+// Create and initialize the app 
+    MusicPlayerApp app("melodex-gui/musicdb.txt");
+    app.Init();
+    app.LoadSongAudio(app.currentSongIndex);
 
-    Music currentMusic = {0};
-    int loadedSongIndex = -1;
+    Library& library = app.library;
+    std::vector<SongEntry>& songs = app.songs;
+    std::vector<PlaylistEntry>& playlists = app.playlists;
+    std::vector<Playlist>& playlistBackends = app.playlistBackends;
+    std::vector<bool>& favoriteFlags = app.favoriteFlags;
+    Music& currentMusic = app.currentMusic;
+    int& loadedSongIndex = app.loadedSongIndex;
+    int& currentSongIndex = app.currentSongIndex;
+    bool& isPlaying = app.isPlaying;
+    bool& isRepeatOn = app.isRepeatOn;
+    bool& isShuffleOn = app.isShuffleOn;
+    bool& isMuted = app.isMuted;
+    float& soundLevel = app.soundLevel;
+    float& currentSeconds = app.currentSeconds;
+    float& totalSeconds = app.totalSeconds;
+    float& lastDraggedPercent = app.lastDraggedPercent;
+    std::string& searchText = app.searchText;
+    bool& searchBoxActive = app.searchBoxActive;
+    float& songListScroll = app.songListScroll;
+    float& playlistScroll = app.playlistScroll;
+    std::vector<std::string>& extraScannedFolders = app.extraScannedFolders;
+    std::string& extraFoldersConfigPath = app.extraFoldersConfigPath;
 
-    Library library("melodex-gui/musicdb.txt");
-    library.load();
-    library.scanFolders("melodex-gui/songs");
-
-    const std::string extraFoldersConfigPath = "melodex-gui/scanned_folders.txt";
-    std::vector<std::string> extraScannedFolders;
-    {
-        std::ifstream cfgIn(extraFoldersConfigPath);
-        if (cfgIn.is_open())
-        {
-            std::string line;
-            while (std::getline(cfgIn, line))
-            {
-                if (line.empty())
-                    continue;
-                extraScannedFolders.push_back(line);
-                library.scanFolders(line);
-            }
-        }
-    }
-
-    std::vector<SongEntry> songs;
-    for (const Song &s : library.allSongs())
-    {
-        songs.push_back(ToSongEntry(s));
-    }
-
-    if (songs.empty())
-    {
-        songs.push_back({"No songs in library", "Add songs to musicdb.txt", ""});
-    }
-
-    int currentSongIndex = 0;
-
-    auto LoadSongAudio = [&](int index)
-    {
-        if (loadedSongIndex != -1 && currentMusic.frameCount > 0)
-        {
-            StopMusicStream(currentMusic);
-            UnloadMusicStream(currentMusic);
-        }
-        if (index >= 0 && index < (int)library.allSongs().size())
-        {
-            std::string path = library.allSongs()[index].filepath();
-            currentMusic = LoadMusicStream(path.c_str());
-            SetMusicVolume(currentMusic, soundLevel);
-            loadedSongIndex = index;
-            totalSeconds = GetMusicTimeLength(currentMusic);
-            currentSeconds = 0.0f;
-        }
-    };
-
-    LoadSongAudio(currentSongIndex);
-
-    std::string searchText = "";
-    bool searchBoxActive = false;
-
-    std::vector<PlaylistEntry> playlists = {
-        PlaylistEntry("All Songs", "", true),
-        PlaylistEntry("Favorites", "", true)};
-
-    std::vector<Playlist> playlistBackends;
-    for (const auto &p : playlists)
-    {
-        std::string filename = "melodex-gui/playlists/" + p.name() + ".txt";
-        Playlist pl(p.name(), filename);
-        pl.load();
-        playlistBackends.push_back(pl);
-    }
-
-    // Convert loaded song IDs back into UI indices
-    for (size_t i = 0; i < playlists.size(); i++)
-    {
-        for (int songId : playlistBackends[i].songIds())
-        {
-            int idx = FindSongIndexById(library.allSongs(), songId);
-            if (idx != -1)
-            {
-                playlists[i].addSongIndex(idx);
-            }
-        }
-    }
-
-    // Load any extra playlists created by the user that aren't in the hardcoded list
-    namespace fs = std::filesystem;
-    if (fs::exists("melodex-gui/playlists"))
-    {
-        for (const auto &entry : fs::directory_iterator("melodex-gui/playlists"))
-        {
-            if (entry.path().extension() == ".txt")
-            {
-                std::string name = entry.path().stem().string();
-
-                bool alreadyLoaded = false;
-                for (const auto &p : playlists)
-                {
-                    if (p.name() == name)
-                    {
-                        alreadyLoaded = true;
-                        break;
-                    }
-                }
-
-                if (!alreadyLoaded)
-                {
-                    Playlist pl(name, entry.path().string());
-                    pl.load();
-
-                    PlaylistEntry newEntry(name, "", false);
-                    for (int songId : pl.songIds())
-                    {
-                        int idx = FindSongIndexById(library.allSongs(), songId);
-                        if (idx != -1)
-                            newEntry.addSongIndex(idx);
-                    }
-
-                    playlists.push_back(newEntry);
-                    playlistBackends.push_back(pl);
-                }
-            }
-        }
-    }
-
-    float playlistScroll = 0.0f;
-    int currentPlaylistIndex = 0; // 0 = "All Songs" by default
+    auto LoadSongAudio = [&](int index) { app.LoadSongAudio(index); };
+    int& currentPlaylistIndex = app.currentPlaylistIndex;
 
     int rightClickedSongIndex = -1;
     Rectangle rightClickedRowRec = {0, 0, 0, 0};
@@ -257,7 +530,6 @@ int main()
     bool deletePlaylistConfirmOpen = false;
     int playlistToDeleteIndex = -1;
     Rectangle contextMenuAnchorRec = {0, 0, 0, 0};
-    std::vector<bool> favoriteFlags(songs.size(), false);
 
     bool showCreatePlaylistPopup = false;
     std::string newPlaylistName = "";
@@ -296,13 +568,7 @@ int main()
             }
             else if (result == POPUP_CREATED)
             {
-                if (!newPlaylistName.empty())
-                {
-                    playlists.push_back(PlaylistEntry(newPlaylistName, newPlaylistCoverPath));
-                    std::string filename = "melodex-gui/playlists/" + newPlaylistName + ".txt";
-                    Playlist newBackend(newPlaylistName, filename);
-                    playlistBackends.push_back(newBackend);
-                }
+                app.CreatePlaylistEntry(newPlaylistName, newPlaylistCoverPath);
                 showCreatePlaylistPopup = false;
                 newPlaylistName = "";
                 newPlaylistCoverPath = "";
@@ -382,130 +648,12 @@ int main()
 
         SongEntry currentSong = songs[currentSongIndex];
 
-        soundLevel = UpdateSoundLevel(virtualMouse, soundLevel);
-        SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+        bool popupsOpen = showCreatePlaylistPopup || showAddFolderPopup;
+        app.HandlePlaybackInput(virtualMouse, popupsOpen, playBtn, repeatBtn, shuffleBtn, volumeBtn);
+        app.UpdatePlayback();
+        app.HandleSeekKeys();
+
         float progressPercent = (totalSeconds > 0) ? (currentSeconds / totalSeconds) : 0.0f;
-        float draggedPercent = UpdateSeekPosition(virtualMouse, progressPercent, totalSeconds);
-
-        bool isDragging = IsMouseButtonDown(MOUSE_LEFT_BUTTON) && (draggedPercent != progressPercent);
-        if (isDragging)
-        {
-            progressPercent = draggedPercent;
-            lastDraggedPercent = draggedPercent;
-        }
-
-        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && totalSeconds > 0 && lastDraggedPercent >= 0.0f)
-        {
-            float newTime = lastDraggedPercent * totalSeconds;
-            SeekMusicStream(currentMusic, newTime);
-            currentSeconds = newTime;
-            lastDraggedPercent = -1.0f;
-        }
-        if (IsKeyPressed(KEY_UP))
-        {
-            soundLevel += 0.05f;
-            if (soundLevel > 1.0f)
-                soundLevel = 1.0f;
-            SetMusicVolume(currentMusic, soundLevel);
-        }
-        if (IsKeyPressed(KEY_DOWN))
-        {
-            soundLevel -= 0.05f;
-            if (soundLevel < 0.0f)
-                soundLevel = 0.0f;
-            SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
-        }
-        if (IsKeyPressed(KEY_M) || (!showCreatePlaylistPopup && !showAddFolderPopup && volumeBtn->IsClicked(virtualMouse)))
-        {
-            isMuted = !isMuted;
-            if (isMuted)
-                SetMusicVolume(currentMusic, 0.0);
-            else
-                SetMusicVolume(currentMusic, soundLevel);
-        }
-
-        if (!showCreatePlaylistPopup && !showAddFolderPopup)
-        {
-            if (playBtn->IsClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
-            {
-                isPlaying = !isPlaying;
-                if (isPlaying)
-                {
-                    PlayMusicStream(currentMusic);
-                }
-                else
-                {
-                    PauseMusicStream(currentMusic);
-                }
-            }
-        }
-        if (!showCreatePlaylistPopup && !showAddFolderPopup)
-        {
-            if (repeatBtn->IsClicked(virtualMouse))
-            {
-                (isShuffleOn) ? (isShuffleOn = !isShuffleOn) : true;
-                isRepeatOn = !isRepeatOn;
-            }
-        }
-        if (!showCreatePlaylistPopup && !showAddFolderPopup)
-        {
-            if (shuffleBtn->IsClicked(virtualMouse))
-            {
-                (isRepeatOn) ? (isRepeatOn = !isRepeatOn) : true;
-                isShuffleOn = !isShuffleOn;
-            }
-        }
-        if (isPlaying)
-        {
-            UpdateMusicStream(currentMusic);
-            currentSeconds = GetMusicTimePlayed(currentMusic);
-            if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f)
-            {
-                if (isRepeatOn)
-                {
-                    SeekMusicStream(currentMusic, 0.0f);
-                    currentSeconds = 0.0f;
-                }
-                else
-                {
-                    AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
-                    LoadSongAudio(currentSongIndex);
-                    PlayMusicStream(currentMusic);
-                }
-            }
-        }
-
-        if (IsKeyPressed(KEY_RIGHT))
-        {
-            currentSeconds += 5.0f;
-            if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f)
-            {
-                if (isRepeatOn)
-                {
-                    currentSeconds = 0.0f;
-                    SeekMusicStream(currentMusic, 0.0f);
-                }
-                else
-                {
-                    AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
-                    LoadSongAudio(currentSongIndex);
-                    if (isPlaying)
-                        PlayMusicStream(currentMusic);
-                }
-            }
-            else
-            {
-                SeekMusicStream(currentMusic, currentSeconds);
-            }
-        }
-        if (IsKeyPressed(KEY_LEFT))
-        {
-            currentSeconds -= 5.0f;
-            if (currentSeconds < 0.0f)
-                currentSeconds = 0.0f;
-            SeekMusicStream(currentMusic, currentSeconds);
-        }
-
         BeginTextureMode(targetTexture);
         ClearBackground(BLACK);
 
@@ -545,20 +693,14 @@ int main()
                     PlayMusicStream(currentMusic);
             }
 
-            if (nextBtn->IsClicked(virtualMouse))
-            {
-                AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
-                LoadSongAudio(currentSongIndex);
-                if (isPlaying)
-                    PlayMusicStream(currentMusic);
-            }
-            if (prevBtn->IsClicked(virtualMouse))
-            {
-                AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), false, ADV_PREV);
-                LoadSongAudio(currentSongIndex);
-                if (isPlaying)
-                    PlayMusicStream(currentMusic);
-            }
+        if (nextBtn->IsClicked(virtualMouse))
+        {
+            app.NextSong();
+        }
+        if (prevBtn->IsClicked(virtualMouse))
+        {
+            app.PreviousSong();
+        }
         }
         rightClickedPlaylistIndex = -1;
         int clickedPlaylist = DrawPlaylistBox(poppinsBold, virtualMouse, &playlistScroll, playlists, &rightClickedPlaylistIndex);
@@ -606,24 +748,12 @@ int main()
             dialog.Draw();
 
             ConfirmResult res = dialog.GetResult();
-            if (res == CONFIRM_YES)
-            {
-                playlistBackends[playlistToDeleteIndex].deletePlaylistFile();
-                playlistBackends.erase(playlistBackends.begin() + playlistToDeleteIndex);
-                playlists.erase(playlists.begin() + playlistToDeleteIndex);
-
-                if (currentPlaylistIndex == playlistToDeleteIndex)
-                {
-                    currentPlaylistIndex = 0;
-                }
-                else if (currentPlaylistIndex > playlistToDeleteIndex)
-                {
-                    currentPlaylistIndex--;
-                }
-
-                deletePlaylistConfirmOpen = false;
-                playlistToDeleteIndex = -1;
-            }
+        if (res == CONFIRM_YES)
+        {
+            app.DeletePlaylistAt(playlistToDeleteIndex);
+            deletePlaylistConfirmOpen = false;
+            playlistToDeleteIndex = -1;
+        }
             else if (res == CONFIRM_NO)
             {
                 deletePlaylistConfirmOpen = false;
@@ -650,19 +780,7 @@ int main()
 
             if (action.result == CTX_TOGGLE_FAVORITE)
             {
-                favoriteFlags[contextMenuSongIndex] = !favoriteFlags[contextMenuSongIndex];
-                int songId = library.allSongs()[contextMenuSongIndex].id();
-
-                if (favoriteFlags[contextMenuSongIndex])
-                {
-                    playlists[1].addSongIndex(contextMenuSongIndex);
-                    printf("Adding song ID %d to favorites, save result: %d\n", songId, playlistBackends[1].addSong(songId));
-                }
-                else
-                {
-                    playlists[1].removeSongIndex(contextMenuSongIndex);
-                    playlistBackends[1].removeSong(songId);
-                }
+                app.ToggleFavorite(contextMenuSongIndex);
                 contextMenuOpen = false;
             }
             else if (action.result == CTX_ADD_TO_PLAYLIST_SUBMENU)
@@ -672,21 +790,15 @@ int main()
             else if (action.result == CTX_PLAYLIST_SELECTED)
             {
                 int realPlaylistIdx = userPlaylistRealIndices[action.selectedPlaylistIndex];
-                playlists[realPlaylistIdx].addSongIndex(contextMenuSongIndex);
-                int songId = songs.empty() ? -1 : library.allSongs()[contextMenuSongIndex].id();
-                if (songId != -1)
+                if (!songs.empty())
                 {
-                    playlistBackends[realPlaylistIdx].addSong(songId);
+                    app.AddSongToPlaylist(realPlaylistIdx, contextMenuSongIndex);
                 }
                 contextMenuOpen = false;
             }
             else if (action.result == CTX_REMOVE_FROM_PLAYLIST)
             {
-                int songId = library.allSongs()[contextMenuSongIndex].id();
-                playlistBackends[currentPlaylistIndex].removeSong(songId);
-
-                playlists[currentPlaylistIndex].removeSongIndex(contextMenuSongIndex);
-
+                app.RemoveSongFromPlaylist(currentPlaylistIndex, contextMenuSongIndex);
                 contextMenuOpen = false;
             }
             else if (action.result == CTX_CLOSED)
