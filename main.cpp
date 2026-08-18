@@ -254,70 +254,142 @@ public:
         }
     }
     // Handles play/pause, shuffle, repeat, mute toggles, and volume/seek input.
-// Assumes virtualMouse and popup-blocking flags are passed in each frame.
+    // Assumes virtualMouse and popup-blocking flags are passed in each frame.
     void HandlePlaybackInput(Vector2 virtualMouse, bool popupsOpen,
-                          IconButton* playBtn, IconButton* repeatBtn, IconButton* shuffleBtn, IconButton* volumeBtn)
-   {
-     // volume slider + drag-based seek stay here since they don't depend on popups
-    soundLevel = UpdateSoundLevel(virtualMouse, soundLevel);
-    SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
-
-    float progressPercent = (totalSeconds > 0) ? (currentSeconds / totalSeconds) : 0.0f;
-    float draggedPercent = UpdateSeekPosition(virtualMouse, progressPercent, totalSeconds);
-
-    bool isDragging = IsMouseButtonDown(MOUSE_LEFT_BUTTON) && (draggedPercent != progressPercent);
-    if (isDragging)
+                            IconButton* playBtn, IconButton* repeatBtn, IconButton* shuffleBtn, IconButton* volumeBtn)
     {
-        lastDraggedPercent = draggedPercent;
-    }
-
-    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && totalSeconds > 0 && lastDraggedPercent >= 0.0f)
-    {
-        float newTime = lastDraggedPercent * totalSeconds;
-        SeekMusicStream(currentMusic, newTime);
-        currentSeconds = newTime;
-        lastDraggedPercent = -1.0f;
-    }
-
-    if (IsKeyPressed(KEY_UP))
-    {
-        soundLevel += 0.05f;
-        if (soundLevel > 1.0f) soundLevel = 1.0f;
+        // volume slider + drag-based seek stay here since they don't depend on popups
+        soundLevel = UpdateSoundLevel(virtualMouse, soundLevel);
         SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
-    }
-    if (IsKeyPressed(KEY_DOWN))
+
+        float progressPercent = (totalSeconds > 0) ? (currentSeconds / totalSeconds) : 0.0f;
+        float draggedPercent = UpdateSeekPosition(virtualMouse, progressPercent, totalSeconds);
+
+        bool isDragging = IsMouseButtonDown(MOUSE_LEFT_BUTTON) && (draggedPercent != progressPercent);
+        if (isDragging)
+        {
+            lastDraggedPercent = draggedPercent;
+        }
+
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && totalSeconds > 0 && lastDraggedPercent >= 0.0f)
+        {
+            float newTime = lastDraggedPercent * totalSeconds;
+            SeekMusicStream(currentMusic, newTime);
+            currentSeconds = newTime;
+            lastDraggedPercent = -1.0f;
+        }
+
+        if (IsKeyPressed(KEY_UP))
+        {
+            soundLevel += 0.05f;
+            if (soundLevel > 1.0f) soundLevel = 1.0f;
+            SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+        }
+        if (IsKeyPressed(KEY_DOWN))
+        {
+            soundLevel -= 0.05f;
+            if (soundLevel < 0.0f) soundLevel = 0.0f;
+            SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+        }
+
+        if (IsKeyPressed(KEY_M) || (!popupsOpen && volumeBtn->IsClicked(virtualMouse)))
+        {
+            isMuted = !isMuted;
+            SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+        }
+
+        if (!popupsOpen)
+        {
+            if (playBtn->IsClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
+            {
+                isPlaying = !isPlaying;
+                if (isPlaying) PlayMusicStream(currentMusic);
+                else PauseMusicStream(currentMusic);
+            }
+            if (repeatBtn->IsClicked(virtualMouse))
+            {
+                if (isShuffleOn) isShuffleOn = false;
+                isRepeatOn = !isRepeatOn;
+            }
+            if (shuffleBtn->IsClicked(virtualMouse))
+            {
+                if (isRepeatOn) isRepeatOn = false;
+                isShuffleOn = !isShuffleOn;
+            }
+        }
+    }// Called every frame while playing; advances/repeats when the current song finishes
+    
+    void UpdatePlayback()
     {
-        soundLevel -= 0.05f;
-        if (soundLevel < 0.0f) soundLevel = 0.0f;
-        SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+        if (!isPlaying) return;
+
+        UpdateMusicStream(currentMusic);
+        currentSeconds = GetMusicTimePlayed(currentMusic);
+
+        if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f)
+        {
+            if (isRepeatOn)
+            {
+                SeekMusicStream(currentMusic, 0.0f);
+                currentSeconds = 0.0f;
+            }
+            else
+            {
+                AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
+                LoadSongAudio(currentSongIndex);
+                PlayMusicStream(currentMusic);
+            }
+        }
     }
 
-    if (IsKeyPressed(KEY_M) || (!popupsOpen && volumeBtn->IsClicked(virtualMouse)))
+    // Handles left/right arrow key seeking (5s jumps), including song-skip at boundaries
+    void HandleSeekKeys()
     {
-        isMuted = !isMuted;
-        SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+        if (IsKeyPressed(KEY_RIGHT))
+        {
+            currentSeconds += 5.0f;
+            if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f)
+            {
+                if (isRepeatOn)
+                {
+                    currentSeconds = 0.0f;
+                    SeekMusicStream(currentMusic, 0.0f);
+                }
+                else
+                {
+                    AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
+                    LoadSongAudio(currentSongIndex);
+                    if (isPlaying) PlayMusicStream(currentMusic);
+                }
+            }
+            else
+            {
+                SeekMusicStream(currentMusic, currentSeconds);
+            }
+        }
+        if (IsKeyPressed(KEY_LEFT))
+        {
+            currentSeconds -= 5.0f;
+            if (currentSeconds < 0.0f) currentSeconds = 0.0f;
+            SeekMusicStream(currentMusic, currentSeconds);
+        }
     }
 
-    if (!popupsOpen)
+    // Advances to next/previous song, respecting shuffle and the active playlist
+    void NextSong()
     {
-        if (playBtn->IsClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
-        {
-            isPlaying = !isPlaying;
-            if (isPlaying) PlayMusicStream(currentMusic);
-            else PauseMusicStream(currentMusic);
-        }
-        if (repeatBtn->IsClicked(virtualMouse))
-        {
-            if (isShuffleOn) isShuffleOn = false;
-            isRepeatOn = !isRepeatOn;
-        }
-        if (shuffleBtn->IsClicked(virtualMouse))
-        {
-            if (isRepeatOn) isRepeatOn = false;
-            isShuffleOn = !isShuffleOn;
-        }
+        AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
+        LoadSongAudio(currentSongIndex);
+        if (isPlaying) PlayMusicStream(currentMusic);
     }
-}
+
+    void PreviousSong()
+    {
+        AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), false, ADV_PREV);
+        LoadSongAudio(currentSongIndex);
+        if (isPlaying) PlayMusicStream(currentMusic);
+    }
+
 
 };
 
@@ -377,7 +449,7 @@ int main()
     std::string& extraFoldersConfigPath = app.extraFoldersConfigPath;
 
     auto LoadSongAudio = [&](int index) { app.LoadSongAudio(index); };
-    int currentPlaylistIndex = 0; // 0 = "All Songs" by default
+    int& currentPlaylistIndex = app.currentPlaylistIndex;
 
     int rightClickedSongIndex = -1;
     Rectangle rightClickedRowRec = {0, 0, 0, 0};
@@ -512,130 +584,12 @@ int main()
 
         SongEntry currentSong = songs[currentSongIndex];
 
-        soundLevel = UpdateSoundLevel(virtualMouse, soundLevel);
-        SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
+        bool popupsOpen = showCreatePlaylistPopup || showAddFolderPopup;
+        app.HandlePlaybackInput(virtualMouse, popupsOpen, playBtn, repeatBtn, shuffleBtn, volumeBtn);
+        app.UpdatePlayback();
+        app.HandleSeekKeys();
+
         float progressPercent = (totalSeconds > 0) ? (currentSeconds / totalSeconds) : 0.0f;
-        float draggedPercent = UpdateSeekPosition(virtualMouse, progressPercent, totalSeconds);
-
-        bool isDragging = IsMouseButtonDown(MOUSE_LEFT_BUTTON) && (draggedPercent != progressPercent);
-        if (isDragging)
-        {
-            progressPercent = draggedPercent;
-            lastDraggedPercent = draggedPercent;
-        }
-
-        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && totalSeconds > 0 && lastDraggedPercent >= 0.0f)
-        {
-            float newTime = lastDraggedPercent * totalSeconds;
-            SeekMusicStream(currentMusic, newTime);
-            currentSeconds = newTime;
-            lastDraggedPercent = -1.0f;
-        }
-        if (IsKeyPressed(KEY_UP))
-        {
-            soundLevel += 0.05f;
-            if (soundLevel > 1.0f)
-                soundLevel = 1.0f;
-            SetMusicVolume(currentMusic, soundLevel);
-        }
-        if (IsKeyPressed(KEY_DOWN))
-        {
-            soundLevel -= 0.05f;
-            if (soundLevel < 0.0f)
-                soundLevel = 0.0f;
-            SetMusicVolume(currentMusic, isMuted ? 0.0f : soundLevel);
-        }
-        if (IsKeyPressed(KEY_M) || (!showCreatePlaylistPopup && !showAddFolderPopup && volumeBtn->IsClicked(virtualMouse)))
-        {
-            isMuted = !isMuted;
-            if (isMuted)
-                SetMusicVolume(currentMusic, 0.0);
-            else
-                SetMusicVolume(currentMusic, soundLevel);
-        }
-
-        if (!showCreatePlaylistPopup && !showAddFolderPopup)
-        {
-            if (playBtn->IsClicked(virtualMouse) || IsKeyPressed(KEY_SPACE))
-            {
-                isPlaying = !isPlaying;
-                if (isPlaying)
-                {
-                    PlayMusicStream(currentMusic);
-                }
-                else
-                {
-                    PauseMusicStream(currentMusic);
-                }
-            }
-        }
-        if (!showCreatePlaylistPopup && !showAddFolderPopup)
-        {
-            if (repeatBtn->IsClicked(virtualMouse))
-            {
-                (isShuffleOn) ? (isShuffleOn = !isShuffleOn) : true;
-                isRepeatOn = !isRepeatOn;
-            }
-        }
-        if (!showCreatePlaylistPopup && !showAddFolderPopup)
-        {
-            if (shuffleBtn->IsClicked(virtualMouse))
-            {
-                (isRepeatOn) ? (isRepeatOn = !isRepeatOn) : true;
-                isShuffleOn = !isShuffleOn;
-            }
-        }
-        if (isPlaying)
-        {
-            UpdateMusicStream(currentMusic);
-            currentSeconds = GetMusicTimePlayed(currentMusic);
-            if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f)
-            {
-                if (isRepeatOn)
-                {
-                    SeekMusicStream(currentMusic, 0.0f);
-                    currentSeconds = 0.0f;
-                }
-                else
-                {
-                    AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
-                    LoadSongAudio(currentSongIndex);
-                    PlayMusicStream(currentMusic);
-                }
-            }
-        }
-
-        if (IsKeyPressed(KEY_RIGHT))
-        {
-            currentSeconds += 5.0f;
-            if (totalSeconds > 0 && currentSeconds >= totalSeconds - 0.1f)
-            {
-                if (isRepeatOn)
-                {
-                    currentSeconds = 0.0f;
-                    SeekMusicStream(currentMusic, 0.0f);
-                }
-                else
-                {
-                    AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
-                    LoadSongAudio(currentSongIndex);
-                    if (isPlaying)
-                        PlayMusicStream(currentMusic);
-                }
-            }
-            else
-            {
-                SeekMusicStream(currentMusic, currentSeconds);
-            }
-        }
-        if (IsKeyPressed(KEY_LEFT))
-        {
-            currentSeconds -= 5.0f;
-            if (currentSeconds < 0.0f)
-                currentSeconds = 0.0f;
-            SeekMusicStream(currentMusic, currentSeconds);
-        }
-
         BeginTextureMode(targetTexture);
         ClearBackground(BLACK);
 
@@ -675,20 +629,14 @@ int main()
                     PlayMusicStream(currentMusic);
             }
 
-            if (nextBtn->IsClicked(virtualMouse))
-            {
-                AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), isShuffleOn, ADV_NEXT);
-                LoadSongAudio(currentSongIndex);
-                if (isPlaying)
-                    PlayMusicStream(currentMusic);
-            }
-            if (prevBtn->IsClicked(virtualMouse))
-            {
-                AdvanceSong(currentSongIndex, playlists, currentPlaylistIndex, (int)songs.size(), false, ADV_PREV);
-                LoadSongAudio(currentSongIndex);
-                if (isPlaying)
-                    PlayMusicStream(currentMusic);
-            }
+        if (nextBtn->IsClicked(virtualMouse))
+        {
+            app.NextSong();
+        }
+        if (prevBtn->IsClicked(virtualMouse))
+        {
+            app.PreviousSong();
+        }
         }
         rightClickedPlaylistIndex = -1;
         int clickedPlaylist = DrawPlaylistBox(poppinsBold, virtualMouse, &playlistScroll, playlists, &rightClickedPlaylistIndex);
