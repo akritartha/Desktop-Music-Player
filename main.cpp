@@ -25,7 +25,7 @@
 
 SongEntry ToSongEntry(const Song &s)
 {
-    return SongEntry(s.title(), s.artist(), "");
+    return SongEntry(s.title(), s.artist(), "melodex-gui/icons/songthumbnail.jpg");
 }
 
 int FindSongIndexById(const std::vector<Song> &allSongs, int id)
@@ -166,8 +166,8 @@ public:
             songs.push_back({"No songs in library", "Add songs to musicdb.txt", ""});
         }
 
-        playlists.push_back(PlaylistEntry("All Songs", "", true));
-        playlists.push_back(PlaylistEntry("Favorites", "", true));
+        playlists.push_back(PlaylistEntry("All Songs", "melodex-gui/icons/allsongs.jpg", true));
+        playlists.push_back(PlaylistEntry("Favorites", "melodex-gui/icons/favourites.jpeg", true));
 
         for (const auto &p : playlists)
         {
