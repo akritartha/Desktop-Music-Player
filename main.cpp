@@ -168,6 +168,7 @@ public:
 
         playlists.push_back(PlaylistEntry("All Songs", "melodex-gui/icons/allsongs.jpg", true));
         playlists.push_back(PlaylistEntry("Favorites", "melodex-gui/icons/favourites.jpeg", true));
+        playlists.push_back(PlaylistEntry("DSB sir", "melodex-gui/icons/favourites.jpeg", false));
 
         for (const auto &p : playlists)
         {
